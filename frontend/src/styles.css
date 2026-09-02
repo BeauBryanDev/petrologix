@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Single scale knob for the whole HUD: every text-* utility is rem-based,
+     so this is what to change if the console reads too small or too large. */
+  html {
+    font-size: 20px;
+  }
+  body {
+    background-color: #161007;
+    color: #e8ddc7;
+    font-family: 'Fira Code', monospace;
+    font-size: 1rem;
+    overflow: hidden;
+  }
+}
+
+/* Cyberpunk 2077 HUD Background Grid & Scanline */
+.cyber-grid-bg {
+  background-color: #1c1409;
+  background-image: 
+    linear-gradient(rgba(74, 56, 19, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 56, 19, 0.3) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.cyber-scanline {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.25) 50%,
+    rgba(0, 0, 0, 0.25)
+  );
+  background-size: 100% 4px;
+}
+
+/* Glow & Neon Utilities */
+.cyber-glow-amber {
+  box-shadow: 0 0 12px rgba(239, 176, 39, 0.35), inset 0 0 8px rgba(239, 176, 39, 0.15);
+}
+
+.cyber-glow-text {
+  text-shadow: 0 0 8px rgba(239, 176, 39, 0.6);
+}
+
+.cyber-border-glow {
+  border-color: #efb027;
+  box-shadow: 0 0 10px rgba(239, 176, 39, 0.4);
+}
+
+/* Angled corner cut styling for Cyberpunk feel */
+.cyber-cut-corner {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 10px) 0,
+    100% 10px,
+    100% 100%,
+    10px 100%,
+    0 calc(100% - 10px)
+  );
+}
+
+/* Custom Cyber Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #161007;
+  border-left: 1px solid #4a3813;
+}
+::-webkit-scrollbar-thumb {
+  background: #efb027;
+  border-radius: 0px;
+  box-shadow: 0 0 6px rgba(239, 176, 39, 0.8);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ffc107;
+}
+
+/* Pulse animation */
+@keyframes cyber-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.98); }
+}
+
+.animate-cyber-pulse {
+  animation: cyber-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

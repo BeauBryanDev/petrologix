@@ -1,0 +1,97 @@
+<div style="background:#1c1409; border:1px solid #4a3813; border-radius:6px; padding:0; font-family:var(--font-mono);">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid #4a3813;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <i class="ti ti-cpu" style="font-size:20px; color:#efb027;" aria-hidden="true"></i>
+      <span style="color:#efb027; font-size:15px; letter-spacing:1px;">aegis-geo-mind // console</span>
+    </div>
+    <div style="display:flex; gap:16px; font-size:11px; color:#a3893f;">
+      <span><i class="ti ti-circle-filled" style="font-size:8px; color:#efb027;" aria-hidden="true"></i> llm: online</span>
+      <span><i class="ti ti-circle-filled" style="font-size:8px; color:#efb027;" aria-hidden="true"></i> xgboost: ready</span>
+      <span><i class="ti ti-circle" style="font-size:8px; color:#6b5a2e;" aria-hidden="true"></i> rag: pending</span>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 210px minmax(0,1fr) 230px; gap:1px; background:#4a3813;">
+
+    <div style="background:#1c1409; padding:14px;">
+      <p style="color:#a3893f; font-size:11px; margin:0 0 10px;">well log input</p>
+      <div style="border:1px dashed #efb027; border-radius:4px; padding:16px 10px; text-align:center; margin-bottom:10px;">
+        <i class="ti ti-file-upload" style="font-size:22px; color:#efb027;" aria-hidden="true"></i>
+        <p style="color:#efb027; font-size:12px; margin:8px 0 2px;">drop .las or .csv</p>
+        <p style="color:#6b5a2e; font-size:10px; margin:0;">las auto-converts</p>
+      </div>
+      <div style="display:flex; gap:6px; margin-bottom:14px;">
+        <span style="flex:1; text-align:center; background:#2e2308; border:1px solid #efb027; color:#efb027; font-size:10px; padding:5px 0; border-radius:3px;">LAS</span>
+        <span style="flex:1; text-align:center; border:1px solid #4a3813; color:#6b5a2e; font-size:10px; padding:5px 0; border-radius:3px;">CSV</span>
+      </div>
+      <p style="color:#a3893f; font-size:11px; margin:0 0 8px;">curves detected</p>
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <span style="color:#e8ddc7; font-size:11px;"><i class="ti ti-check" style="font-size:12px; color:#efb027;" aria-hidden="true"></i> GR</span>
+        <span style="color:#e8ddc7; font-size:11px;"><i class="ti ti-check" style="font-size:12px; color:#efb027;" aria-hidden="true"></i> RESD</span>
+        <span style="color:#e8ddc7; font-size:11px;"><i class="ti ti-check" style="font-size:12px; color:#efb027;" aria-hidden="true"></i> NPHI / RHOB</span>
+      </div>
+    </div>
+
+    <div style="background:#1c1409; padding:14px; display:flex; flex-direction:column; min-height:340px;">
+      <p style="color:#a3893f; font-size:11px; margin:0 0 10px;">geologist assistant</p>
+      <div style="flex:1; display:flex; flex-direction:column; gap:10px; margin-bottom:10px;">
+        <div style="align-self:flex-end; background:#2e2308; border:1px solid #4a3813; border-radius:4px; padding:8px 10px; max-width:80%;">
+          <p style="color:#e8ddc7; font-size:12px; margin:0;">interpret facies for interval 2340-2380m</p>
+        </div>
+        <div style="align-self:flex-start; background:#241a0a; border:1px solid #efb027; border-radius:4px; padding:8px 10px; max-width:85%;">
+          <p style="color:#efb027; font-size:10px; margin:0 0 4px; letter-spacing:0.5px;">AEGIS-GEO-MIND</p>
+          <p style="color:#e8ddc7; font-size:12px; margin:0; line-height:1.5;">XGBoost predicts sandstone (conf. 0.81) across this interval, consistent with the GR/RHOB response...</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; border-top:1px solid #4a3813; padding-top:10px;">
+        <input placeholder="ask about this well..." style="flex:1; background:#241a0a; border:1px solid #4a3813; color:#e8ddc7; font-size:12px; padding:8px 10px; border-radius:4px; font-family:var(--font-mono);" />
+        <span style="background:#efb027; color:#241a0a; font-size:11px; padding:8px 14px; border-radius:4px;">send</span>
+      </div>
+    </div>
+
+    <div style="background:#1c1409; padding:14px;">
+      <p style="color:#a3893f; font-size:11px; margin:0 0 8px;">well log · 2340-2380m</p>
+
+      <svg viewBox="0 0 200 170" style="width:100%; height:170px;" role="img" aria-label="Placeholder well log curves showing gamma ray and resistivity traces against depth">
+        <line x1="20" y1="4" x2="20" y2="160" stroke="#4a3813" stroke-width="1"/>
+        <text x="4" y="12" font-size="7" fill="#6b5a2e">2340</text>
+        <text x="4" y="80" font-size="7" fill="#6b5a2e">2360</text>
+        <text x="4" y="158" font-size="7" fill="#6b5a2e">2380</text>
+
+        <polyline points="35,4 42,14 33,24 48,34 30,44 45,54 38,64 50,74 34,84 46,94 36,104 44,114 32,124 48,134 38,144 42,154 35,160"
+                  fill="none" stroke="#efb027" stroke-width="1.3"/>
+
+        <polyline points="80,4 95,16 75,28 100,40 78,52 92,64 82,76 98,88 76,100 94,112 84,124 90,136 79,148 88,160"
+                  fill="none" stroke="#c99a3a" stroke-width="1.3"/>
+
+        <polyline points="140,4 145,20 138,36 148,52 136,68 150,84 140,100 146,116 138,132 148,148 142,160"
+                  fill="none" stroke="#8a6f2c" stroke-width="1.3"/>
+
+        <text x="30" y="169" font-size="7" fill="#efb027">GR</text>
+        <text x="80" y="169" font-size="7" fill="#c99a3a">RESD</text>
+        <text x="136" y="169" font-size="7" fill="#8a6f2c">RHOB</text>
+      </svg>
+
+      <div style="border:1px solid #4a3813; border-radius:4px; padding:10px; margin:10px 0 8px;">
+        <p style="color:#6b5a2e; font-size:10px; margin:0 0 3px;">predicted facies</p>
+        <p style="color:#efb027; font-size:15px; margin:0;">sandstone</p>
+      </div>
+
+      <div style="border:1px solid #4a3813; border-radius:4px; padding:10px;">
+        <p style="color:#6b5a2e; font-size:10px; margin:0 0 3px;">confidence</p>
+        <div style="background:#2e2308; border-radius:3px; height:6px; margin:4px 0;">
+          <div style="background:#efb027; width:81%; height:100%; border-radius:3px;"></div>
+        </div>
+        <p style="color:#e8ddc7; font-size:11px; margin:0;">0.81</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="padding:8px 18px; border-top:1px solid #4a3813; display:flex; justify-content:space-between;">
+    <span style="color:#6b5a2e; font-size:10px;">qwen2.5-7b-4bit · t4</span>
+    <span style="color:#6b5a2e; font-size:10px;">research preview</span>
+  </div>
+
+</div>
