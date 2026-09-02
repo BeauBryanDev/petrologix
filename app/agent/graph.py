@@ -8,6 +8,7 @@ from typing import Literal
 from app.agent.prompts import (
     GENERAL_SYSTEM_PROMPT,
     LITHOLOGY_RULES,
+    MATH_RULES,
     POROSITY_TOOL_RULE,
     RETRIEVAL_RULES,
     build_retrieval_context,
@@ -69,13 +70,11 @@ class GeoMindState:
     intervals: list[LithologyInterval] | None = None
     curves: WellCurves | None = None
     # Quantities a tool measured this turn, so the fabrication guard stops
-    # treating them as unsourceable. A tool that returns real numbers must add
-    # its own name here -- compute_porosity adds "porosity".
+    # treating them as unsourceable.
     computed_quantities: set[str] = field(default_factory=set)
     # Raw text of every tool result handed to the model this turn. The guards
     # check the answer against what the model was actually shown, so anything
-    # missing from here gets reported as invented -- the porosity tool quoting
-    # its own 0.7 confidence threshold was flagged that way.
+    # missing from here gets reported as invented .
     tool_outputs: list[str] = field(default_factory=list)
 
     def note(self, step: str) -> None:
@@ -161,6 +160,17 @@ async def retrieve_node(state: GeoMindState) -> GeoMindState:
         state.note("retrieve=skipped (query too short)")
         return state
 
+    if is_formula_request(question):
+        # The corpus cannot serve equations. It was built from old scanned print
+        # books that predate LaTeX, so the maths came through OCR as symbol soup
+        # and chunking split what survived. Passing that to the model gives a
+        # worse answer than its own knowledge and, because RETRIEVAL_RULES tell
+        # it to prefer the passages, it copies the mangled characters instead of
+        # writing the equation properly. Claude writes these from its own
+        # training knowledge in LaTeX .
+        state.note("retrieve=skipped (equation request)")
+        return state
+
     context, hits = await run_geology_search(question)
 
     if context is None:
@@ -196,9 +206,16 @@ async def generate_node(state: GeoMindState) -> GeoMindState:
         )
 
     if state.rag_context:
-        
+
         rules.append(RETRIEVAL_RULES)
         blocks.append(build_retrieval_context(state.rag_context))
+
+    if is_formula_request(question):
+        # No passages were retrieved for this turn (retrieve_node skipped the
+        # corpus), so say where the equation comes from instead of leaving the
+        # model to imply a source it was not given.
+        rules.append(MATH_RULES)
+        state.note("math: answering from model knowledge")
 
     # The one place the model, not the backend, decides whether a tool runs:
     # "compute porosity" and "explain porosity" are the same words apart, and
@@ -292,9 +309,6 @@ _BLIND_SPOT_NOTE_ONE = (
 
 
 # Language that describes the MODEL's limits rather than the WELL's contents.
-# "The model cannot detect Chalk" is the correct thing to say -- appending a
-# correction that says the same thing back is noise, and reads as the assistant
-# arguing with itself.
 _LIMITATION_RE = re.compile(
     r"\b(?:model|classifier|xgboost|it)\b[^.]{0,40}\b(?:cannot|can't|unable|"
     r"does not reliably|doesn't reliably|not reliably|fails? to)\b"
@@ -350,19 +364,53 @@ _FABRICATION_NOTE_WITH_RAG = (
 )
 
 _FORMULA_REQUEST_RE = re.compile(
-    r"\b(equation|formula|how (?:do you|is it) calculat(?:e|ing|ion)?|how to calculate|"
-    r"derive|what is the (?:equation|formula)|worked example)\b",
+    r"\b(equation|formula|expression for|how (?:do you|is it) calculat(?:e|ing|ion)?|"
+    r"how to calculate|how is .{0,30}\b(?:calculated|derived|computed)\b|"
+    r"derivation|derive|what is the (?:equation|formula)|worked example|"
+    r"solve for|rearrange|cementation exponent|saturation exponent|tortuosity factor)\b",
+    re.I,
+)
+
+# Equations petroleum geology names after people. These come up as bare names
+# ("what is Archie?", "explain Wyllie") with none of the wording above, and they
+# are exactly the requests the corpus answers worst.
+_NAMED_EQUATION_RE = re.compile(
+    r"\b(archie|wyllie|humble|timur|coates|larionov|steiber|clavier|gardner|"
+    r"waxman[- ]smits|dual[- ]water|simandoux|indonesia equation|darcy'?s? law|"
+    r"buckley[- ]leverett|kozeny[- ]carman|dean[- ]stark)\b",
+    re.I,
+)
+
+# A question tied to the loaded well is an interpretation request, not a request
+# for a general equation -- "calculate the porosity of my well" must stay on the
+# tool path and keep the fabrication guard armed.
+_WELL_SPECIFIC_RE = re.compile(
+    r"\b(my|this|the)\s+(well|log|logs|upload|file|data|zone|interval|reservoir)\b"
+    r"|\bfor my\b|\buploaded\b",
     re.I,
 )
 
 
 def is_formula_request(question: str) -> bool:
-    """True when the user asks for a general equation or derivation rather than
-    an interpretation of this well's specific measured properties. Worked
-    examples in a formula answer use illustrative numbers, not claims about
-    the well, so the unsupported-quantity guard should not fire on them.
+    """True when the user wants a general equation or derivation rather than an
+    interpretation of this well's measured properties.
+
+    Two things hang off this. The unsupported-quantity guard stands down,
+    because a worked example uses illustrative numbers rather than claims about
+    the well. And retrieve_node skips the corpus entirely: the books were
+    scanned from pre-LaTeX print, so equations came through chunking as symbol
+    soup, and a retrieved passage is actively worse than Claude's own recall for
+    this one class of question. See _NAMED_EQUATION_RE for why bare names count.
+
+    A question that names the user's own well is never a formula request, even
+    when it says "calculate" -- that one belongs to the porosity tool.
     """
-    return bool(_FORMULA_REQUEST_RE.search(question))
+    if _WELL_SPECIFIC_RE.search(question):
+        return False
+
+    return bool(
+        _FORMULA_REQUEST_RE.search(question) or _NAMED_EQUATION_RE.search(question)
+    )
 
 
 # A bracketed passage number, e.g. "[2]". RETRIEVAL_RULES require one next to any
@@ -393,10 +441,7 @@ def find_unsupported_quantities(
     has_context : retrieved passages were in the prompt, so cited sentences are
         exempt. Without them every such number is unsourced.
     computed : quantities a tool actually measured this turn (e.g. "porosity"
-        once compute_porosity has run). The premise of this guard is that the
-        model was handed nothing but lithology, depth and confidence -- once a
-        tool supplies a real figure that premise no longer holds, and flagging
-        it would have the agent call its own measurement fabricated.
+        once compute_porosity has run). 
     """
     text = _uncited_text(answer) if has_context else answer
     exempt = {q.lower() for q in (computed or ())}
@@ -586,9 +631,9 @@ async def run(
 ) -> GeoMindResult:
     """Execute the flow.
 
-        route -> [lithology] -> generate -> guard
+        route -> [lithology] -> retrieve -> generate -> guard
 
-    (retrieve is disconnected -- see the commented call below.)
+    (retrieve is skipped for equation questions -- see is_formula_request.)
 
     Both structured prediction and prose answer come back, so the caller can
     render the log track and the chat bubble from one request.
@@ -609,10 +654,13 @@ async def run(
     if state.route == "lithology":
         state = lithology_node(state)
         
-    # RAG is disconnected from the flow: the retrieved passages were degrading
-    # answers rather than grounding them. retrieve_node and app/rag/ are left
-    # intact -- re-enable by restoring this call (and RAG_ENABLED=true).
-    # state = await retrieve_node(state)
+    # RAG is back on the flow. It was disconnected because retrieved passages
+    # degraded answers, and the failure was specific: equations. The corpus is
+    # OCR'd pre-LaTeX print, so its maths is unusable, while its prose on
+    # depositional environments, traps and rock properties is sound and is the
+    # part worth citing. retrieve_node now skips the corpus for equation
+    # questions and consults it for everything else.
+    state = await retrieve_node(state)
     state = await generate_node(state)
     state = guard_node(state)
 

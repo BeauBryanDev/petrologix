@@ -33,7 +33,9 @@ async def lifespan(app: FastAPI):
     # Validate the Anthropic client at startup. Failure is non-fatal: lithology
     # prediction does not need the LLM.
     if settings.llm_warm_on_startup:
+        
         async def _warm() -> None:
+            
             try:
                 if await get_llm_client().is_awake():
                     logger.info("Anthropic LLM client ready")
@@ -48,11 +50,15 @@ async def lifespan(app: FastAPI):
 
     # Validate the RAG collection at startup. Also non-fatal: without it the
     # agent answers from the model's own knowledge, which is the pre-RAG
-    # behaviour, not a broken one. The check is worth making because a
-    # dimension mismatch degrades answers silently instead of erroring.
+    # behaviour, not a broken one. 
+    
     if settings.rag_enabled and settings.qdrant_url:
+        
         async def _check_rag() -> None:
+            # The check is worth making because a
+            # dimension mismatch degrades answers silently instead of erroring.
             try:
+                
                 info = await vectorstore.check_collection()
                 logger.info(
                     "geology RAG ready: %s (%s points, %s-dim)",
@@ -63,7 +69,9 @@ async def lifespan(app: FastAPI):
                 logger.warning("geology RAG unavailable: %s", e)
 
         asyncio.create_task(_check_rag())
+        
     else:
+        
         logger.info("geology RAG disabled or unconfigured")
 
     logger.info("%s ready", settings.app_name)

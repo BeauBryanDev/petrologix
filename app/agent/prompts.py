@@ -52,6 +52,27 @@ actual well logs , you can give an aporch base on records by usign this tool.
 """
 
 
+# Injected when the question asks for an equation. The corpus is OLD scanned print BOOKS
+# from before LaTeX, so its equations survived OCR as symbol soup -- retrieval is
+# skipped for these turns and the model answers from its own training instead.
+MATH_RULES = """This question asks for an equation, so answer it from your own
+knowledge of petroleum geology and petrophysics. No reference passages were
+retrieved for this turn.
+
+- Write every equation in LaTeX: $inline$ for a symbol in a sentence, $$display$$
+  on its own lines for the equation itself. Never paste raw characters or
+  ASCII-art maths.
+- Define each symbol and give its units immediately after the equation.
+- Name the equation and its usual assumptions or validity limits -- Archie
+  assumes a clean, water-wet formation, Wyllie assumes consolidated rock at
+  moderate porosity, and saying so is part of the answer.
+- Cite nothing in brackets. A [n] citation refers to a retrieved passage, and
+  there are none on this turn; say the equation is standard, not that a source
+  gave it to you.
+- Numbers in a worked example are illustrative. Make that explicit and never
+  present them as measurements from the user's well."""
+
+
 LITHOLOGY_CONTEXT_TEMPLATE = """Lithology prediction for the uploaded well log:
 
 {summary}

@@ -17,6 +17,7 @@ PLOT_CURVES = ["GR", "RDEP", "RHOB", "NPHI", "DTC"]
 # training data. Chosen for contrast: one sandstone-rich, one shale/evaporite.
 SAMPLE_WELLS = [
     SampleWell(
+        
         id="25_5-1",
         well_name="25/5-1",
         label="North Sea 25/5-1",
