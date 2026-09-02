@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_name: str = "Aegis-Geo-Mind"
+    app_name: str = "Petrologix-v.1.0"
     debug: bool = False
 
     # Uploads
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # Geologist LLM — Qwen2.5-7B QLoRA (4-bit) on a Hugging Face Gradio Space,
     # T4 GPU, called over HTTP. 
-    #
+    # this llm is not longer the brain fro mthis SPA Web app anymore
     # The Space exposes a single endpoint: respond(message) -> response.
     # A token is optional for a public Space 
     hf_llm_endpoint: str = "https://beaunix-aegis-geo-mind-demo.hf.space"
@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     hf_token: str | None = None
     
     # Anthropic LLM, Now this is the default LLM Provider
+    # i switch to Claude-Sonnet, this is a reliable llm with strong knowledge in geology background
+
     anthropic_model: str = "claude-sonnet-5"
     anthropic_api_key: str | None = None
 
