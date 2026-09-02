@@ -34,3 +34,7 @@ langgraph-checkpoint==4.2.0
 langgraph-prebuilt==1.1.0
 langgraph-sdk==0.4.2
 langsmith==0.10.17
+
+# Tests (pytest.ini sets asyncio_mode=auto; run: ./geologs/bin/python -m pytest)
+pytest>=8.0
+pytest-asyncio>=0.23
