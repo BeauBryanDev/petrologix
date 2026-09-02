@@ -11,6 +11,8 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # My  model (Qwen2.5-7B QLoRA, 4-bit) runs on the Space's T4.
+
+# I AN NOT LONGER USING MY OWN MODEL, I AM USING THE ANTHROPIC LLM FOR BETTER RESPONSES
 class LLMUnavailableError(RuntimeError):
     """The Space is unreachable, asleep past our patience, or returned an error."""
 

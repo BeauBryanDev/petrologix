@@ -5,8 +5,10 @@ import uuid
 from dataclasses import dataclass, field
 
 from app.agent import graph
+from app.petrologix import compute_porosity
+from app.petrologix.compute_porosity import WellCurves
 from app.schemas.chats import ChatRequest, ChatResponse, SessionInfo
-from app.schemas.predictions import PredictionResponse
+from app.schemas.predictions import LithologyInterval, PredictionResponse
 
 logger = logging.getLogger(__name__)
 """Chat orchestration and per-session well context.
@@ -24,6 +26,11 @@ class SessionState:
     n_intervals: int | None = None
     dominant_lithology: str | None = None
     mean_confidence: float | None = None
+    # What the porosity tool needs on a follow-up turn. The upload is a temp
+    # file the router deletes when the request ends, so the zones and the two
+    # curves are kept here instead -- roughly 170 KB per well.
+    intervals: list[LithologyInterval] = field(default_factory=list)
+    curves: WellCurves | None = None
 
 
 class SessionStore:
@@ -68,13 +75,37 @@ class SessionStore:
         return state
 
     def attach_prediction(
-        self, session_id: str, prediction: PredictionResponse, summary: str
+        self,
+        session_id: str,
+        prediction: PredictionResponse,
+        summary: str,
+        well_log_path: str | None = None,
+        well_log_filename: str | None = None,
     ) -> SessionState:
-        """Record a prediction so later chat turns can refer to it."""
+        """Record a prediction so later chat turns can refer to it.
+
+        Pass the upload's path to keep porosity available on later turns: the
+        curves are read here, while the file still exists, because the caller
+        deletes it as soon as the request finishes.
+        """
         state = self.create(session_id)
         state.lithology_summary = summary
         state.well_name = prediction.well_name
         state.n_intervals = len(prediction.intervals)
+        state.intervals = list(prediction.intervals)
+
+        if well_log_path:
+
+            try:
+                state.curves = compute_porosity.extract_curves(
+                    well_log_path, well_log_filename or prediction.well_name
+                )
+
+            except Exception:
+                # Losing the curves costs the porosity tool on later turns; it
+                # must not cost the prediction the user just paid for.
+                logger.exception("could not cache curves for session %s", session_id)
+                state.curves = None
         
         if prediction.intervals:
             
@@ -121,12 +152,16 @@ async def chat(request: ChatRequest) -> ChatResponse:
         question=request.message,
         history=[t.model_dump() for t in request.history],
         prior_lithology_summary=state.lithology_summary,
+        # Carried so the porosity tool can run on this turn without the upload.
+        prior_intervals=state.intervals or None,
+        prior_curves=state.curves,
     )
 
     return ChatResponse(
         answer=result.answer,
         session_id=state.session_id,
         llm_used=result.llm_used,
+        rag_hits=result.rag_hits,
         has_well_context=state.lithology_summary is not None,
         warnings=result.warnings,
         dominant_lithology=state.dominant_lithology,

@@ -39,6 +39,12 @@ class ChatResponse(BaseModel):
     has_well_context: bool = Field(
         description="Whether a lithology prediction informed this answer."
     )
+    rag_hits: int = Field(
+        default=0,
+        description="Reference passages retrieved from the geology corpus and "
+                    "given to the model. 0 means the answer came from the "
+                    "model's own knowledge.",
+    )
     warnings: list[str] = Field(
         default_factory=list,
         description="Model caveats and any corrections applied to the answer. "

@@ -103,11 +103,54 @@ class ClaudeLLMClient:
         raise LLMUnavailableError(
             f"Claude API unreachable after {retries + 1} attempts. ({last})"
         ) from last
- 
+    
+    
+    async def generate_with_tools(
+    self,
+    message: str,
+    system: str,
+    tools: list[dict],
+    tool_executor,
+    history: list[dict] | None = None,
+    max_iterations: int = 3,
+) -> str:
+        """Agentic loop: call Claude with tools, execute any tool_use blocks via
+        tool_executor(name, input) -> str, feed results back, repeat until Claude
+        stops requesting tools or max_iterations is hit.
+        """
+        messages = [*(history or []), {"role": "user", "content": message}]
+
+        for _ in range(max_iterations):
+            response = await self._client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=system or "",
+                tools=tools,
+                messages=messages,
+            )
+            messages.append({"role": "assistant", "content": response.content})
+
+            if response.stop_reason != "tool_use":
+                return "".join(b.text for b in response.content if b.type == "text")
+
+            tool_results = [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": tool_executor(block.name, block.input),
+                }
+                for block in response.content if block.type == "tool_use"
+            ]
+            messages.append({"role": "user", "content": tool_results})
+
+        logger.warning("hit max_iterations (%d) still requesting tools", max_iterations)
+        return "I wasn't able to finish that calculation — please try again."
+    
     async def is_awake(self) -> bool:
         """No cold starts with the API -- always True if a key is configured."""
         return True
- 
+    
+    
  
 _client: ClaudeLLMClient | None = None
  

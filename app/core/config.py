@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,9 +53,40 @@ class Settings(BaseSettings):
     # Nudge the Space awake at startup so the first user does not pay the boot.
     llm_warm_on_startup: bool = True
 
-    # RAG — not wired yet.
-    qdrant_url: str | None = None
+    # RAG — geology corpus in Qdrant Cloud, read-only from this backend.
+    # QDRANT_CLUSTER_ENDPOINT_REST is what the Qdrant Cloud console hands you;
+    # accepted as an alias so the .env does not have to be rewritten.
+    qdrant_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("QDRANT_URL", "QDRANT_CLUSTER_ENDPOINT_REST"),
+    )
     qdrant_api_key: str | None = None
+    qdrant_collection: str = "geo_corpus"
+    qdrant_timeout_s: float = 20.0
+
+    # Query embeddings: BAAI/bge-large-en-v1.5, 1024 dims, over HTTP for the same
+    # reason the LLM is — no torch in this image. The endpoint MUST serve the
+    # same model the collection was built with, and must apply sentence pooling.
+    embedding_endpoint: str | None = None
+    # Falls back to hf_token when unset.
+    embedding_token: str | None = None
+    embedding_timeout_s: float = 30.0
+    # bge wants this instruction on queries only; passages are embedded bare.
+    embedding_query_prefix: str = (
+        "Represent this sentence for searching relevant passages: "
+    )
+
+    # Retrieval. The threshold is cosine similarity — below ~0.5 bge returns
+    # topically unrelated text, which is worse than no context at all.
+    rag_enabled: bool = True
+    rag_top_k: int = 5
+    rag_score_threshold: float = 0.5
+    rag_max_chars_per_passage: int = 1500
+    # Fetch k * this, then drop near-duplicates down to k.
+    rag_overfetch: int = 3
+    # section_title is a concatenation of every heading on the page; trim it so a
+    # citation stays readable.
+    rag_max_section_chars: int = 80
     
     # EIA API KEY Used to get the EIA data
     EIA_API_KEY: str | None = None

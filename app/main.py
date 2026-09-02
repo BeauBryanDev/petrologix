@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.logging import configure_logging
 from app.llm.anthropic_client import LLMUnavailableError, get_llm_client
 from app.petrologix.loader import load_model
+from app.rag import vectorstore
 from app.routers import chat, health, prediction, well_logs
 from app.routers import petroleum_price
 
@@ -45,8 +46,30 @@ async def lifespan(app: FastAPI):
                 
         asyncio.create_task(_warm())
 
+    # Validate the RAG collection at startup. Also non-fatal: without it the
+    # agent answers from the model's own knowledge, which is the pre-RAG
+    # behaviour, not a broken one. The check is worth making because a
+    # dimension mismatch degrades answers silently instead of erroring.
+    if settings.rag_enabled and settings.qdrant_url:
+        async def _check_rag() -> None:
+            try:
+                info = await vectorstore.check_collection()
+                logger.info(
+                    "geology RAG ready: %s (%s points, %s-dim)",
+                    info["collection"], info["points"], info["vector_size"],
+                )
+
+            except Exception as e:  # noqa: BLE001 - never block startup on this
+                logger.warning("geology RAG unavailable: %s", e)
+
+        asyncio.create_task(_check_rag())
+    else:
+        logger.info("geology RAG disabled or unconfigured")
+
     logger.info("%s ready", settings.app_name)
     yield
+
+    await vectorstore.aclose()
 
 
 app = FastAPI(
@@ -57,7 +80,7 @@ app = FastAPI(
 )
 
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware,  # todo : change on production to project sub domain
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],

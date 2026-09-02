@@ -75,7 +75,11 @@ async def predict(
             from app.agent.tools.xgboost_tool import summarize_prediction
             from app.services import chat_service
             chat_service.store.attach_prediction(
-                session_id, result, summarize_prediction(result)
+                session_id, result, summarize_prediction(result),
+                # Read here, while the temp file still exists -- the finally
+                # below deletes it, and porosity needs the curves later.
+                well_log_path=tmp_path,
+                well_log_filename=file.filename or "upload",
             )
         return result
     except UnsupportedFormatError as e:

@@ -1,10 +1,19 @@
 
 import logging
 import re
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Literal
 
-from app.agent.prompts import GENERAL_SYSTEM_PROMPT, LITHOLOGY_RULES
+from app.agent.prompts import (
+    GENERAL_SYSTEM_PROMPT,
+    LITHOLOGY_RULES,
+    POROSITY_TOOL_RULE,
+    RETRIEVAL_RULES,
+    build_retrieval_context,
+)
+from app.agent.tools.rag_tools import run_geology_search
+from app.core.config import settings
 from app.agent.tools.xgboost_tool import (
     UNRELIABLE_CLASSES,
     run_lithology_tool,
@@ -15,6 +24,9 @@ from app.schemas.predictions import PredictionResponse
 from app.services import prediction_service
 from app.services.prediction_service import InvalidWellLogError
 from app.utils.las2csv_parser import UnsupportedFormatError
+from app.agent.tools import porosity_tool, rag_tools
+from app.schemas.predictions import LithologyInterval
+from app.petrologix.compute_porosity import WellCurves
 
 logger = logging.getLogger(__name__)
 
@@ -34,18 +46,37 @@ class GeoMindState:
     # A summary carried over from an earlier turn. Lets follow-up questions reuse
     # a prediction instead of re-running it
     prior_lithology_summary: str | None = None
+    # Same idea for the intervals the porosity tool needs: a follow-up turn can
+    # compute porosity without re-running the lithology model.
+    prior_intervals: list[LithologyInterval] | None = None
+    # Depth + RHOB cached by the session, so porosity works on a chat turn where
+    # the uploaded file is long gone.
+    prior_curves: WellCurves | None = None
 
     # populated by nodes
     route: Route | None = None
     prediction: PredictionResponse | None = None
     lithology_summary: str | None = None
-    rag_context: str | None = None          # reserved: app/rag/ is not built yet
+    rag_context: str | None = None
+    rag_hits: int = 0
     answer: str | None = None
 
     # observability
     llm_used: bool = False
     warnings: list[str] = field(default_factory=list)
     trace: list[str] = field(default_factory=list)
+    # for the porosity tool
+    intervals: list[LithologyInterval] | None = None
+    curves: WellCurves | None = None
+    # Quantities a tool measured this turn, so the fabrication guard stops
+    # treating them as unsourceable. A tool that returns real numbers must add
+    # its own name here -- compute_porosity adds "porosity".
+    computed_quantities: set[str] = field(default_factory=set)
+    # Raw text of every tool result handed to the model this turn. The guards
+    # check the answer against what the model was actually shown, so anything
+    # missing from here gets reported as invented -- the porosity tool quoting
+    # its own 0.7 confidence threshold was flagged that way.
+    tool_outputs: list[str] = field(default_factory=list)
 
     def note(self, step: str) -> None:
         self.trace.append(step)
@@ -64,6 +95,8 @@ def route_node(state: GeoMindState) -> GeoMindState:
     else:
         # No new file: reuse a summary from earlier in the session if there is one.
         state.lithology_summary = state.prior_lithology_summary
+        state.intervals = state.prior_intervals
+        state.curves = state.prior_curves
         state.route = "chat"
     state.note(f"route={state.route}")
     
@@ -85,6 +118,7 @@ def lithology_node(state: GeoMindState) -> GeoMindState:
         )
         state.lithology_summary = summarize_prediction(state.prediction)
         status = state.prediction.distribution.status
+        state.intervals = state.prediction.intervals
         state.note(f"lithology ok ({len(state.prediction.intervals)} zones, {status})")
         
         if status != "ok":
@@ -105,13 +139,37 @@ def lithology_node(state: GeoMindState) -> GeoMindState:
     return state
 
 
-def retrieve_node(state: GeoMindState) -> GeoMindState:
-    """Geology RAG. Not built yet -- see app/rag/.
+async def retrieve_node(state: GeoMindState) -> GeoMindState:
+    """Geology RAG: fetch reference passages for the question.
 
-    Left as an explicit no-op node so the wiring point is obvious and adding
-    Qdrant later does not require restructuring the flow.
+    Runs on every turn, not only chat turns. A lithology upload is usually
+    followed by an interpretation question ("is this a reservoir?"), and that is
+    exactly where the model's recall of numeric facts is weakest.
+
+    Never raises: run_geology_search swallows its own failures, and a turn with
+    no context is still a usable answer.
     """
-    state.note("retrieve=skipped (RAG not wired)")
+    if not settings.rag_enabled:
+        state.note("retrieve=disabled")
+        return state
+
+    question = state.question.strip()
+
+    if len(question) < 8:
+        # Too short to embed usefully ("ok", "and?"); the history has the topic
+        # but the query does not, and a vague vector retrieves vague passages.
+        state.note("retrieve=skipped (query too short)")
+        return state
+
+    context, hits = await run_geology_search(question)
+
+    if context is None:
+        state.note("retrieve=unavailable")
+        return state
+
+    state.rag_context = context or None
+    state.rag_hits = hits
+    state.note(f"retrieve={hits} passages")
 
     return state
 
@@ -123,26 +181,82 @@ async def generate_node(state: GeoMindState) -> GeoMindState:
     expensive, trustworthy part of the answer; losing it because the API is down
     would be the wrong trade.
     """
-    system = GENERAL_SYSTEM_PROMPT
-    user_message = state.question.strip()
+    rules = [GENERAL_SYSTEM_PROMPT]
+    blocks: list[str] = []
+    question = state.question.strip()
 
     if state.lithology_summary:
         
-        system = f"{GENERAL_SYSTEM_PROMPT}\n\n{LITHOLOGY_RULES}"
+        rules.append(LITHOLOGY_RULES)
         
-        user_message = (
+        blocks.append(
             "Lithology prediction for the uploaded well log:\n\n"
             f"{state.lithology_summary}\n\n"
-            "This table has already been shown to the user, so do not repeat it.\n\n"
-            f"Question: {user_message}"
+            "This table has already been shown to the user, so do not repeat it."
         )
+
+    if state.rag_context:
+        
+        rules.append(RETRIEVAL_RULES)
+        blocks.append(build_retrieval_context(state.rag_context))
+
+    # The one place the model, not the backend, decides whether a tool runs:
+    # "compute porosity" and "explain porosity" are the same words apart, and
+    # only the model can tell them apart. Offered only when there is a log on
+    # disk and zones to compute over -- otherwise the tool has nothing to read.
+    tools: list[dict] = []
+
+    if state.intervals and (state.well_log_path or state.curves):
+        tools.append(porosity_tool.TOOL_SCHEMA)
+        rules.append(POROSITY_TOOL_RULE)
+        state.note("tool offered: compute_porosity")
+
+    system = "\n\n".join(rules)
+    user_message = "\n\n".join([*blocks, f"Question: {question}"]) if blocks else question
 
     state.note(f"prompt~{len(user_message) // 4}tok")
 
+    def execute_tool(name: str, tool_input: dict) -> str:
+        """Run a tool for the model. Claude never sees the LAS -- the tool reads
+        it here and returns only its text summary, as the lithology tool does.
+        """
+        if name != porosity_tool.TOOL_SCHEMA["name"]:
+            logger.warning("model requested unknown tool %r", name)
+            return f"No such tool: {name}"
+
+        try:
+            summary = porosity_tool.run(state, tool_input)
+
+        except Exception:
+            # A failed tool must not lose the turn: hand the model the failure so
+            # it can say so, rather than raising and dropping the whole answer.
+            logger.exception("porosity tool failed")
+            return (
+                "The porosity calculation failed. Tell the user it could not be "
+                "computed; do not estimate a value."
+            )
+
+        # Without these the guards flag the tool's own numbers as invented.
+        state.computed_quantities |= porosity_tool.MEASURES
+        state.tool_outputs.append(summary)
+        state.note("tool: compute_porosity")
+
+        return summary
+
     try:
-        state.answer = await get_llm_client().generate(
-            user_message, system=system, history=state.history
-        )
+        if tools:
+            state.answer = await get_llm_client().generate_with_tools(
+                user_message,
+                system=system,
+                tools=tools,
+                tool_executor=execute_tool,
+                history=state.history,
+            )
+        else:
+            state.answer = await get_llm_client().generate(
+                user_message, system=system, history=state.history
+            )
+
         state.llm_used = True
         state.note("llm ok")
         
@@ -177,10 +291,35 @@ _BLIND_SPOT_NOTE_ONE = (
 )
 
 
+# Language that describes the MODEL's limits rather than the WELL's contents.
+# "The model cannot detect Chalk" is the correct thing to say -- appending a
+# correction that says the same thing back is noise, and reads as the assistant
+# arguing with itself.
+_LIMITATION_RE = re.compile(
+    r"\b(?:model|classifier|xgboost|it)\b[^.]{0,40}\b(?:cannot|can't|unable|"
+    r"does not reliably|doesn't reliably|not reliably|fails? to)\b"
+    r"|\b(?:cannot|can't|unable to|not able to)\s+(?:reliably\s+)?"
+    r"(?:detect|determine|distinguish|identify|resolve|predict)\b"
+    r"|\b(?:blind spot|limitation of the model|model limitation|low recall|"
+    r"not reliably detected|below detection)\b",
+    re.I,
+)
+
+
 def find_blind_spot_claims(answer: str) -> list[str]:
-    """Return blind-spot lithologies the answer wrongly claims are absent."""
+    """Return blind-spot lithologies the answer wrongly claims are absent.
+
+    Sentences that frame the class as undetectable are left alone: those state
+    the model's limitation, which is what the system prompt asks for. Only a
+    claim about the well itself ("no dolomite is present") is corrected.
+    """
+    sentences = [
+        s for s in re.split(r"(?<=[.!?\n])\s+", answer) if not _LIMITATION_RE.search(s)
+    ]
+    text = " ".join(sentences)
+
     return [cls for cls in UNRELIABLE_CLASSES
-            if any(rx.search(answer) for rx in _ABSENCE_RE if cls.lower() in rx.pattern.lower())]
+            if any(rx.search(text) for rx in _ABSENCE_RE if cls.lower() in rx.pattern.lower())]
 
 
 # The model is given lithology, depth, thickness and confidence -- nothing else.
@@ -204,6 +343,12 @@ _FABRICATION_NOTE = (
     "confidence. It has no {quantities} data."
 )
 
+_FABRICATION_NOTE_WITH_RAG = (
+    "Correction: the figures above for {quantities} are uncited. The lithology "
+    "model provides only rock type, depth and confidence, and no reference "
+    "passage was credited for them."
+)
+
 _FORMULA_REQUEST_RE = re.compile(
     r"\b(equation|formula|how (?:do you|is it) calculat(?:e|ing|ion)?|how to calculate|"
     r"derive|what is the (?:equation|formula)|worked example)\b",
@@ -220,9 +365,45 @@ def is_formula_request(question: str) -> bool:
     return bool(_FORMULA_REQUEST_RE.search(question))
 
 
-def find_unsupported_quantities(answer: str) -> list[str]:
-    """Return petrophysical quantities the answer quotes numbers for but cannot know."""
-    return sorted({q for q, rx in _QUANTITY_RE if rx.search(answer)})
+# A bracketed passage number, e.g. "[2]". RETRIEVAL_RULES require one next to any
+# fact taken from the corpus.
+_CITATION_RE = re.compile(r"\[\d{1,2}\]")
+
+
+def _uncited_text(answer: str) -> str:
+    """The answer minus every sentence that cites a retrieved passage.
+
+    With RAG on, a number can legitimately come from the corpus -- a typical
+    porosity range for a formation, say. The fabrication guard is about numbers
+    the model cannot source, so cited sentences are out of its scope; uncited
+    ones are still fabricated by construction.
+    """
+    kept = [s for s in re.split(r"(?<=[.!?\n])\s+", answer) if not _CITATION_RE.search(s)]
+
+    return " ".join(kept)
+
+
+def find_unsupported_quantities(
+    answer: str,
+    has_context: bool = False,
+    computed: Collection[str] | None = None,
+) -> list[str]:
+    """Return petrophysical quantities the answer quotes numbers for but cannot know.
+
+    has_context : retrieved passages were in the prompt, so cited sentences are
+        exempt. Without them every such number is unsourced.
+    computed : quantities a tool actually measured this turn (e.g. "porosity"
+        once compute_porosity has run). The premise of this guard is that the
+        model was handed nothing but lithology, depth and confidence -- once a
+        tool supplies a real figure that premise no longer holds, and flagging
+        it would have the agent call its own measurement fabricated.
+    """
+    text = _uncited_text(answer) if has_context else answer
+    exempt = {q.lower() for q in (computed or ())}
+
+    return sorted(
+        {q for q, rx in _QUANTITY_RE if q not in exempt and rx.search(text)}
+    )
 
 
 _CONFIDENCE_RE = re.compile(
@@ -273,22 +454,34 @@ def _confidence_values(answer: str) -> list[float]:
 
 
 def find_unsupported_confidence(
-    answer: str, lithology_summary: str | None
+    answer: str,
+    lithology_summary: str | None,
+    tool_outputs: Collection[str] = (),
 ) -> tuple[bool, list[str]]:
     """Check confidence claims against the figures the model was actually given.
 
     Returns (no_prediction_at_all, mismatched_values). Matching is exact to two
     decimals -- the precision the summary prints.
+
+    tool_outputs : every other tool result shown to the model this turn. Without
+        them the guard only knows the lithology summary and reports any other
+        real figure as invented -- the porosity tool quoting its own 0.7
+        confidence threshold was flagged exactly that way.
     """
     claimed = _confidence_values(answer)
-    
+
     if not claimed:
         return False, []
-    
+
     if not lithology_summary:
         return True, []
 
-    shown = {round(float(m), 2) for m in _SUMMARY_NUMBER_RE.findall(lithology_summary)}
+    sources = [lithology_summary, *tool_outputs]
+    shown = {
+        round(float(m), 2)
+        for text in sources
+        for m in _SUMMARY_NUMBER_RE.findall(text)
+    }
     mismatched = [f"{c:.2f}" for c in claimed if round(c, 2) not in shown]
     
     return False, sorted(set(mismatched))
@@ -302,7 +495,7 @@ def guard_node(state: GeoMindState) -> GeoMindState:
     notes: list[str] = []
 
     no_prediction, mismatched = find_unsupported_confidence(
-        state.answer, state.lithology_summary
+        state.answer, state.lithology_summary, state.tool_outputs
     )
     if no_prediction:
         notes.append(_NO_PREDICTION_NOTE)
@@ -342,10 +535,17 @@ def guard_node(state: GeoMindState) -> GeoMindState:
 
     if not is_formula_request(state.question):
         
-        invented = find_unsupported_quantities(state.answer)
+        invented = find_unsupported_quantities(
+            state.answer,
+            has_context=bool(state.rag_context),
+            computed=state.computed_quantities,
+        )
         
         if invented:
-            notes.append(_FABRICATION_NOTE.format(quantities=", ".join(invented)))
+            note = (
+                _FABRICATION_NOTE_WITH_RAG if state.rag_context else _FABRICATION_NOTE
+            )
+            notes.append(note.format(quantities=", ".join(invented)))
             state.note(f"guard: flagged fabricated quantities ({', '.join(invented)})")
             logger.error("model quoted unsupported quantities %s -- fabricated", invented)
     else:
@@ -368,6 +568,7 @@ class GeoMindResult:
     llm_used: bool
     warnings: list[str]
     trace: list[str]
+    rag_hits: int = 0
     # Carried out so the caller can cache it and reuse it on follow-up turns
     # without re-running the model or asking the user to re-upload.
     lithology_summary: str | None = None
@@ -380,10 +581,14 @@ async def run(
     history: list[dict] | None = None,
     min_thickness_m: float | None = None,
     prior_lithology_summary: str | None = None,
+    prior_intervals: list[LithologyInterval] | None = None,
+    prior_curves: WellCurves | None = None,
 ) -> GeoMindResult:
     """Execute the flow.
 
-        route -> [lithology] -> [retrieve] -> generate -> guard
+        route -> [lithology] -> generate -> guard
+
+    (retrieve is disconnected -- see the commented call below.)
 
     Both structured prediction and prose answer come back, so the caller can
     render the log track and the chat bubble from one request.
@@ -395,6 +600,8 @@ async def run(
         history=history or [],
         min_thickness_m=min_thickness_m,
         prior_lithology_summary=prior_lithology_summary,
+        prior_intervals=prior_intervals,
+        prior_curves=prior_curves,
     )
 
     state = route_node(state)
@@ -402,7 +609,10 @@ async def run(
     if state.route == "lithology":
         state = lithology_node(state)
         
-    state = retrieve_node(state)
+    # RAG is disconnected from the flow: the retrieved passages were degrading
+    # answers rather than grounding them. retrieve_node and app/rag/ are left
+    # intact -- re-enable by restoring this call (and RAG_ENABLED=true).
+    # state = await retrieve_node(state)
     state = await generate_node(state)
     state = guard_node(state)
 
@@ -415,4 +625,5 @@ async def run(
         lithology_summary=state.lithology_summary,
         warnings=state.warnings,
         trace=state.trace,
+        rag_hits=state.rag_hits,
     )

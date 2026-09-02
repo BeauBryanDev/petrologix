@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 """Chat endpoints for the geologist assistant."""
 
-# The chat endpoint is the main entry point for the geologist assistant. It is a thin wrapper around the chat_service, which orchestrates the LLM and lithology model calls. The service handles session state, well context, and error handling.
+# The chat endpoint is the main entry point for the geologist assistant. It is a thin wrapper around the chat_service, which orchestrates the LLM and lithology model calls. 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
     """Ask the geologist assistant a question.
@@ -26,7 +26,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
     """
     try:
         return await chat_service.chat(request)
-    
+    # The LLM is unavailable, so the request is a no-op. The frontend can retry
+    # later, but the backend does not need to retry the request itself.
     except Exception:
         
         logger.exception("chat failed")
