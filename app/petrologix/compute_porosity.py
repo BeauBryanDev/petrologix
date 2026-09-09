@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 
 MATRIX_DENSITY_G_CC = {
     "Sandstone": 2.65,
-    "Sandstone/Shale": 2.68,   # rough blend -- flagged as approximate below
-    "Shale": 2.65,             # genuinely variable; flagged as approximate
+    "Sandstone/Shale": 2.68,   # rough blend :: flagged as approximate below
+    "Shale": 2.65,   # it does not distinguish between sandstone and shale
     "Limestone": 2.71,
     "Dolomite": 2.87,
     "Chalk": 2.71,
     "Marl": 2.65,
-    "Anhydrite": 2.98,         # CaSO4
-    "Halite": 2.03,            # NaCl -- lighter than the pore fluid it displaces
+    "Anhydrite": 2.98,  # CaSO4
+    "Halite": 2.03,  # NaCl ::lighter than the pore fluid it displaces
     "Coal": 1.80,
     "Tuff": 2.40,
 }
@@ -43,7 +43,6 @@ PLAUSIBLE_POROSITY_FRACTION = (0.0, 0.5)
 # density pad and the formation; RHOB reads low and density porosity reads
 # high, which is the classic way a washed sand fakes a spectacular reservoir.
 #
-
 WASHOUT_GAUGE_PERCENTILE = 5
 WASHOUT_EXCESS_IN = 1.0 # inches over gauge before a sample counts as washed
 WASHOUT_ZONE_FRACTION = 0.25  # share of the zone that must be washed to flag it
@@ -113,6 +112,7 @@ class WellCurves:
     __slots__ = ("depth", "rhob", "cali", "well_name")
 
     def __init__(self, depth, rhob, cali=None, well_name: str = ""):
+        
         self.depth = np.asarray(depth, dtype=np.float32)
         self.rhob = np.asarray(rhob, dtype=np.float32)
         # Optional: used to flag washed-out hole, where RHOB reads mud instead
@@ -125,7 +125,8 @@ class WellCurves:
 
 
 def extract_curves(
-    well_log_path: str, well_log_filename: str
+    well_log_path: str, 
+    well_log_filename: str
 ) -> WellCurves | None:
     """Pull depth and RHOB out of an upload. None when the log has neither.
 
@@ -179,7 +180,8 @@ def compute_zone_porosity_from_curves(
     confidence_threshold: float = 0.7,
 ) -> list[PorosityResult]:
 
-    """Compute mean density porosity per zone from curves already in memory.
+    """
+    Compute mean density porosity per zone from curves already in memory.
 
     Same maths as compute_zone_porosity -- split out so a cached well can be
     recomputed on a later turn without the original file.
@@ -217,7 +219,8 @@ def compute_zone_porosity_from_curves(
                 note="no valid RHOB samples in this interval",
             ))
             continue
-
+        
+        # Main Math Equation
         phi = (rho_ma - rhob_zone) / (rho_ma - fluid_density_g_cc)
         mean_phi = float(np.mean(phi))
         mean_phi_pct = round(mean_phi * 100, 1)
@@ -277,7 +280,10 @@ def compute_zone_porosity_from_curves(
     return results
  
  
-def summarize_porosity(results: list[PorosityResult], max_zones: int = 10) -> str:
+#  this is what the LLM sees
+def summarize_porosity(results: list[PorosityResult],
+                       max_zones: int = 10
+                       ) -> str:
     """Compact text summary -- this, not raw curves, is what the LLM sees."""
     if not results:
         
