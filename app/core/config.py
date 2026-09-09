@@ -3,11 +3,12 @@ from pathlib import Path
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
+# This is the only place where the app reads its config. It is a singleton
 class Settings(BaseSettings):
+    
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_name: str = "Petrologix-v.1.0"
+    app_name: str = "Petrologix-v.3.0"
     debug: bool = False
 
     # Uploads
@@ -26,7 +27,7 @@ class Settings(BaseSettings):
     min_interval_thickness_m: float = 0.5
 
     # Geologist LLM — Qwen2.5-7B QLoRA (4-bit) on a Hugging Face Gradio Space,
-    # T4 GPU, called over HTTP. 
+    # T4 GPU, called over HTTP.  [[ DEPRECATED ]]
     # this llm is not longer the brain fro mthis SPA Web app anymore
     # The Space exposes a single endpoint: respond(message) -> response.
     # A token is optional for a public Space 
@@ -35,7 +36,7 @@ class Settings(BaseSettings):
     hf_token: str | None = None
     
     # Anthropic LLM, Now this is the default LLM Provider
-    # i switch to Claude-Sonnet, this is a reliable llm with strong knowledge in geology background
+    # I switch to Claude-Sonnet, this is a bigger llm with strong knowledge in geology background
 
     anthropic_model: str = "claude-sonnet-5"
     anthropic_api_key: str | None = None
@@ -48,6 +49,9 @@ class Settings(BaseSettings):
     # spends the same budget as the answer. Off by default: the reasoning is
     # never shown and the geology prompt does not need it.
     anthropic_thinking: bool = False
+    # Sonnet 5 effort: low | medium | high | xhigh | max. Unset keeps the API
+    # default (high). "medium" is a cheap latency win for chat turns.
+    anthropic_effort: str | None = None
 
     # A cold T4 Space takes 1-3 minutes to boot; generation adds seconds more.
     llm_read_timeout_s: float = 300.0
@@ -81,14 +85,14 @@ class Settings(BaseSettings):
     # Retrieval. The threshold is cosine similarity — below ~0.5 bge returns
     # topically unrelated text, which is worse than no context at all.
     rag_enabled: bool = True
-    rag_top_k: int = 5
+    rag_top_k: int = 3
     rag_score_threshold: float = 0.5
-    rag_max_chars_per_passage: int = 1500
+    rag_max_chars_per_passage: int = 1250
     # Fetch k * this, then drop near-duplicates down to k.
     rag_overfetch: int = 3
     # section_title is a concatenation of every heading on the page; trim it so a
     # citation stays readable.
-    rag_max_section_chars: int = 80
+    rag_max_section_chars: int = 75
     
     # EIA API KEY Used to get the EIA data
     EIA_API_KEY: str | None = None

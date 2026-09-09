@@ -1,12 +1,3 @@
-"""Query embeddings for the geology RAG.
-
-BAAI/bge-large-en-v1.5, 1024 dimensions -- the same model the Qdrant collection
-was built with. Swapping it silently would make every retrieval garbage, so the
-dimension is asserted on the first call rather than trusted.
-
-Served over HTTP for the same reason the LLM is: this backend has no torch and
-no transformers, and adding them for one encoder would double the image.
-"""
 
 import asyncio
 import logging
@@ -19,7 +10,11 @@ logger = logging.getLogger(__name__)
 
 EMBED_DIM = 1024
 
+# Query embeddings for the geology RAG.
 
+# BAAI/bge-large-en-v1.5, 1024 dimensions -- the same model the Qdrant collection
+# was built with. Swapping it silently would make every retrieval garbage, so the
+# dimension is asserted on the first call rather than trusted.
 class EmbeddingUnavailableError(RuntimeError):
     """The embedding endpoint is unreachable or returned an error."""
 
@@ -60,7 +55,9 @@ class BGEEmbedder:
 
         for attempt in range(retries + 1):
             try:
-                r = await self._client.post(self.endpoint, json=payload, headers=headers)
+                r = await self._client.post(self.endpoint, 
+                                            json=payload, 
+                                            headers=headers)
                 r.raise_for_status()
                 return _as_vector(r.json())
 

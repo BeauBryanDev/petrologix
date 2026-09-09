@@ -1,9 +1,3 @@
-"""Qdrant Cloud connection for the geology corpus.
-
-One async client for the process. The collection is read-only from the backend's
-point of view -- ingestion happens offline, so nothing here creates or writes to
-a collection.
-"""
 
 import logging
 
@@ -11,7 +5,10 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Qdrant Cloud connection for the geology corpus.
 
+# One async client for the process. The collection is read-only from the backend's
+# point of view, so the client is not shared.
 class VectorStoreUnavailableError(RuntimeError):
     """Qdrant is unconfigured, unreachable, or missing the collection."""
 
@@ -35,7 +32,7 @@ def get_client():
             "no Qdrant URL configured -- set QDRANT_URL in .env"
         )
 
-    try:
+    try:   # qdrant-client is a soft dependency
         from qdrant_client import AsyncQdrantClient
 
     except ImportError as e:
@@ -90,6 +87,7 @@ async def check_collection() -> dict:
     return {"collection": name, "vector_size": size, "points": info.points_count}
 
 
+# Close the client when the process exits.
 async def aclose() -> None:
     global _client
 

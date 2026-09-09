@@ -1,9 +1,3 @@
-"""Retrieval over the geology corpus.
-
-RAG is here for one measured reason: the fine-tune reproduces expert register
-reliably but states specific numeric facts wrong with high confidence. Retrieved
-passages give the model a source for those facts instead of its own weights.
-"""
 
 import logging
 from dataclasses import dataclass
@@ -14,6 +8,7 @@ from app.rag.vectorstore import VectorStoreUnavailableError, get_client
 
 logger = logging.getLogger(__name__)
 
+# Retrieval over the geology corpus
 # Payload keys vary by how the corpus was ingested; the first one present wins.
 _TEXT_KEYS = ("text", "page_content", "content", "chunk", "body")
 _SOURCE_KEYS = ("source_doc", "source", "document", "file_name", "url")
