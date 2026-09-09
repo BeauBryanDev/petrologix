@@ -1,16 +1,12 @@
-"""Geology RAG as an agent tool.
 
-Wraps app/rag so the graph has one call that never raises: retrieval is an
-enrichment, and losing the whole answer because Qdrant is slow would be the
-wrong trade -- the same rule generate_node applies to the LLM.
-"""
-# TODO: TEMPRAL DISABLED RAG,  MY RAG CORPUS FAILED WHEN CALL FOR MATH EQUATIONS
 import logging
 
 from app.rag.embeddings import EmbeddingUnavailableError
 from app.rag.retriever import format_context, retrieve
 from app.rag.vectorstore import VectorStoreUnavailableError
 
+# Geology RAG as an agent tool.
+# Wrap app.rag.retriever.retrieve for the agent to call.
 logger = logging.getLogger(__name__)
 
 # Ready for when the model chooses its own tools; the graph calls retrieve
@@ -35,7 +31,7 @@ GEOLOGY_SEARCH_TOOL_SPEC = {
     },
 }
 
-
+# This is what the LLM sees
 async def run_geology_search(question: str, top_k: int | None = None) -> tuple[str | None, int]:
     """Return (formatted context, passage count). ("", 0) means no usable hits.
 

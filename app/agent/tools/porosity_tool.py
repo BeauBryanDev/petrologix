@@ -8,21 +8,20 @@ from app.petrologix.compute_porosity import (
 curve, per predicted lithology zone.
 """
 
-# Quantities this tool actually measures. Whoever invokes it must merge this
-# into state.computed_quantities, or guard_node will flag the numbers it
-# produced as fabricated -- see find_unsupported_quantities in graph.py.
+
 MEASURES = {"porosity"}
 
 TOOL_SCHEMA = {
     "name": "compute_porosity",
     "description": (
         "Calculate density porosity (from the RHOB curve) for each predicted "
-        "lithology zone in the currently loaded well log. Use this only when "
-        "the user explicitly asks to calculate, compute, or estimate porosity "
-        "FOR THEIR WELL , even though you do not have the logs," 
-        " you invoke this tools, when they ask for general questions about porosity theory, "
-        "equations, or worked examples, which you should answer directly from your knowledge "
-        "without calling this tool."
+        "lithology zone in the currently loaded well log. This tool reads the "
+        "well's curve data itself, server-side -- you do not need to provide "
+        "any curve values, depths, or file contents as input; just call it. "
+        "Use it when the user explicitly asks to calculate, compute, or "
+        "estimate porosity FOR THEIR WELL. Do not use it for general questions "
+        "about porosity theory, equations, or worked examples -- answer those "
+        "directly from your own knowledge instead."
     ),
     "input_schema": {
         "type": "object",
@@ -39,7 +38,7 @@ TOOL_SCHEMA = {
     },
 }
  
- 
+# This is what the LLM sees
 def run(state, tool_input: dict) -> str:
     """Execute the tool against the current request's well log and lithology.
  
@@ -59,13 +58,18 @@ def run(state, tool_input: dict) -> str:
     # Curves cached by the session come first: on a follow-up turn the upload
     # has already been deleted, and this is the only copy left.
     if state.curves is not None:
+        
         results = compute_zone_porosity_from_curves(
-            state.curves, state.intervals, fluid_density_g_cc=fluid_density,
+            state.curves, state.intervals, 
+            fluid_density_g_cc=fluid_density,
         )
 
     elif state.well_log_path:
+        
         results = compute_zone_porosity(
-            state.well_log_path, state.well_log_filename, state.intervals,
+            state.well_log_path, 
+            state.well_log_filename, 
+            state.intervals,
             fluid_density_g_cc=fluid_density,
         )
 

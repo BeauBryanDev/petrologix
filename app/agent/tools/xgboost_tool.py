@@ -8,7 +8,8 @@ from app.services.prediction_service import InvalidWellLogError
 from app.utils.las2csv_parser import UnsupportedFormatError
 
 logger = logging.getLogger(__name__)
-"""Lithology prediction tool for the geologist agent.
+"""
+Lithology prediction tool for the geologist agent.
 
 Wraps the XGBoost well-log model as something an LLM can call. The heavy lifting
 is in `app.services.prediction_service`; this module's job is to turn a
@@ -60,7 +61,9 @@ LITHOLOGY_TOOL_SPEC = {
 }
 
 
-def summarize_prediction(response: PredictionResponse, max_zones: int = 8) -> str:
+def summarize_prediction(response: PredictionResponse, 
+                         max_zones: int = 8
+                         ) -> str:
     """Render a PredictionResponse as a compact, LLM-readable summary.
 
     Kept near 200 tokens: totals, thickest zones, confidence, blind spots.
@@ -124,6 +127,7 @@ def summarize_prediction(response: PredictionResponse, max_zones: int = 8) -> st
     return "\n".join(lines)
 
 
+# This is what the LLM sees
 def run_lithology_tool(
     file_path: str,
     min_thickness_m: float | None = None,
@@ -160,8 +164,10 @@ def run_lithology_tool(
     return summarize_prediction(response)
 
 
+
 def as_langchain_tool():
-    """Wrap the tool for LangChain / LangGraph.
+    """
+    Wrap the tool for LangChain / LangGraph.
 
     Imported lazily so this module stays usable without an agent framework
     installed -- the `/predict` route does not need one.

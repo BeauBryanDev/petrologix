@@ -33,7 +33,8 @@ def check_distribution(df: pd.DataFrame, bundle: dict) -> DistributionCheck:
     )
 
 
-def predict(df: pd.DataFrame, bundle: dict, min_thickness: float | None = None):
+def predict(df: pd.DataFrame, bundle: dict, 
+            min_thickness: float | None = None):
     """Run the model and collapse to intervals.
 
     Returns (intervals, samples). `samples` is one row per depth and is for the
