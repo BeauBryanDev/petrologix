@@ -24,16 +24,11 @@ anthropic>=0.39.0
 # RAG. Query embeddings are an HTTP call (bge-large-en-v1.5, 1024-dim), so no
 # torch or sentence-transformers here -- same reasoning as the LLM.
 qdrant-client>=1.9
-# langgraph
-# langchain-core
-langchain==1.3.14
-langchain-core==1.5.3
-langchain-protocol==0.0.18
-langgraph==1.2.10
-langgraph-checkpoint==4.2.0
-langgraph-prebuilt==1.1.0
-langgraph-sdk==0.4.2
-langsmith==0.10.17
+
+# No langchain/langgraph. agent/graph.py is a hand-rolled state machine and tool
+# calling goes through the Anthropic SDK. The only langchain reference left is the
+# lazy import in agent/tools/xgboost_tool.py:as_langchain_tool(), which is unused --
+# install langchain-core only if the graph is ported to LangGraph.
 
 # Tests (pytest.ini sets asyncio_mode=auto; run: ./geologs/bin/python -m pytest)
 pytest>=8.0

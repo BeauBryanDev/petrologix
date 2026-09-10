@@ -82,16 +82,20 @@ def summarize_prediction(response: PredictionResponse,
         f"({response.n_samples} samples, {len(response.intervals)} zones)."
     ]
     if response.distribution.status == "warning":
+        
         lines.append(f"CAUTION: {response.distribution.message}")
 
     if not response.intervals:
+        
         lines.append("No lithology zones were resolved.")
         return "\n".join(lines)
 
     total = sum(i.thickness for i in response.intervals) or 1.0
 
     totals: dict[str, float] = {}
+    
     for iv in response.intervals:
+        
         totals[iv.lithology] = totals.get(iv.lithology, 0.0) + iv.thickness
 
     lines.append("\nLithology totals:")
@@ -164,20 +168,3 @@ def run_lithology_tool(
     return summarize_prediction(response)
 
 
-
-def as_langchain_tool():
-    """
-    Wrap the tool for LangChain / LangGraph.
-
-    Imported lazily so this module stays usable without an agent framework
-    installed -- the `/predict` route does not need one.
-    """
-    from langchain_core.tools import tool
-
-    @tool(TOOL_NAME, description=LITHOLOGY_TOOL_SPEC["function"]["description"])
-    
-    def predict_well_lithology(file_path: str, min_thickness_m: float = 0.5) -> str:
-        
-        return run_lithology_tool(file_path, min_thickness_m=min_thickness_m)
-
-    return predict_well_lithology

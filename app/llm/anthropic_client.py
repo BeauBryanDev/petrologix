@@ -77,10 +77,6 @@ class ClaudeLLMClient:
             "thinking": self.thinking,
             "system": system or "",
             "messages": messages,
-            # Automatic breakpoint on the last block, so the second call of a
-            # tool turn reads the first call's prefix from cache instead of
-            # paying for it again. The explicit marker on the stable system
-            # block (set by the caller) covers the part every turn shares.
             "cache_control": {"type": "ephemeral"},
         }
         if tools:
@@ -168,13 +164,15 @@ class ClaudeLLMClient:
         tools: list[dict],
         tool_executor,
         history: list[dict] | None = None,
-        max_iterations: int = 5,
+        # Four tools can legitimately chain: search, then porosity, then OOIP
+        # off that porosity, then a price to value it.
+        max_iterations: int = 8,
         on_event: StreamEvent | None = None,
     ) -> str:
         """
         Agentic loop: call Claude with tools, execute any tool_use blocks via
-        tool_executor(name, input) -> str, feed results back, repeat until Claude
-        stops requesting tools or max_iterations is hit.
+        the async tool_executor(name, input) -> str, feed results back, repeat
+        until Claude stops requesting tools or max_iterations is hit.
 
         Every call streams. Text that precedes a tool request is preamble
         ("let me compute that"); the receiver gets a "tool" event and drops it.
@@ -208,7 +206,7 @@ class ClaudeLLMClient:
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
-                        "content": tool_executor(block.name, block.input),
+                        "content": await tool_executor(block.name, block.input),
                     })
 
                 messages.append({"role": "user", "content": tool_results})

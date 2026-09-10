@@ -2,8 +2,8 @@
 """
 
 from app.agent.graph import (
-    retrieve_node,
     GeoMindState,
+    generate_node,
     find_blind_spot_claims,
     find_unsupported_confidence,
     find_unsupported_quantities,
@@ -11,6 +11,7 @@ from app.agent.graph import (
     is_formula_request,
     route_node,
 )
+from app.agent.tools import registry
 from app.core.config import settings
 
 
@@ -89,8 +90,8 @@ def test_a_question_about_the_users_well_is_never_a_formula_request():
     assert not is_formula_request("How do you calculate porosity for this log?")
 
 
-async def test_retrieve_node_skips_the_corpus_for_equations(monkeypatch):
-    monkeypatch.setattr(settings, "rag_enabled", True)
+async def test_corpus_search_refuses_when_the_corpus_is_unavailable(monkeypatch):
+    # generate_node clears the flag for equation questions.
     called = False
 
     async def fail(*a, **kw):
@@ -98,24 +99,36 @@ async def test_retrieve_node_skips_the_corpus_for_equations(monkeypatch):
         called = True
         return "[1] some OCR'd source\nphi = ...", 1
 
-    monkeypatch.setattr("app.agent.graph.run_geology_search", fail)
-    state = await retrieve_node(_state(question="What is Archie's equation?"))
+    monkeypatch.setattr("app.agent.tools.rag_tools.run_geology_search", fail)
+    state = _state(question="What is Archie's equation?")
+    state.corpus_available = False
+
+    out = await registry._run_geology_search(state, {"query": "Archie's equation"})
 
     assert not called
+    assert "own knowledge" in out
     assert state.rag_context is None and state.rag_hits == 0
-    assert "retrieve=skipped (equation request)" in state.trace
 
 
-async def test_retrieve_node_consults_the_corpus_for_prose_questions(monkeypatch):
-    monkeypatch.setattr(settings, "rag_enabled", True)
-
+async def test_corpus_search_records_passages_on_the_state(monkeypatch):
     async def ok(*a, **kw):
         return "[1] Selley, Elements of Petroleum Geology\nKerogen matures...", 1
 
-    monkeypatch.setattr("app.agent.graph.run_geology_search", ok)
-    state = await retrieve_node(_state(question="Where does oil come from underground?"))
+    monkeypatch.setattr("app.agent.tools.registry.rag_tools.run_geology_search", ok)
+    state = _state(question="Where does oil come from underground?")
 
+    out = await registry._run_geology_search(
+        state, {"query": "Where does oil come from underground?"}
+    )
+
+    assert "Selley" in out
     assert state.rag_hits == 1 and "Selley" in state.rag_context
+
+
+def test_equation_questions_disarm_the_corpus(monkeypatch):
+    # The flag the tool above reads is set here, not in the tool.
+    assert is_formula_request("What is Archie's equation?")
+    assert not is_formula_request("Calculate the porosity of my well.")
 
 
 # confidence claims
@@ -200,3 +213,78 @@ def test_route_node_restores_prior_session_context_on_a_chat_turn(sandstone_inte
     assert state.lithology_summary == "Shale 0.91"
     assert state.intervals == [sandstone_interval]
     assert state.curves is clean_curves
+
+
+def test_porosity_table_percentages_are_not_confidence_claims():
+    # A porosity cell or a washout fraction sitting just before the word
+    # "confidence" used to be read as a confidence claim and flagged.
+    summary = "694.2-926.0 m Sandstone conf 0.93"
+    tool = "694.2-926.0 m  Sandstone  conf 0.93  47.5%\n  note: 78% of this zone is washed out"
+    answer = (
+        "| 694.2-926.0 | Sandstone (0.93) | 47.5% | Low-confidence lithology |\n"
+        "| 1775.8-1835.5 | Sandstone (0.50) | 39.3% | 78% washed out + low confidence |"
+    )
+    assert find_unsupported_confidence(answer, summary, [tool]) == (False, [])
+
+
+# tool loop
+def test_every_registered_tool_has_a_schema_and_runner():
+    assert {t.name for t in registry.TOOLS} == {
+        "compute_porosity", "compute_ooip", "get_oil_prices", "search_geology_corpus",
+    }
+    assert len(registry.SCHEMAS) == len(registry.TOOLS)
+
+
+async def test_generate_node_offers_every_tool_and_records_what_they_measure(monkeypatch):
+    seen = {}
+
+    class FakeClient:
+        async def generate_with_tools(self, message, system, tools, tool_executor,
+                                      history=None, on_event=None):
+            seen["tools"] = [t["name"] for t in tools]
+            seen["system"] = system
+            return await tool_executor("compute_ooip", {})
+
+    monkeypatch.setattr("app.agent.graph.get_llm_client", lambda: FakeClient())
+    monkeypatch.setattr("app.agent.tools.registry.ooip_tool.run", lambda ti: "N = 12 MMSTB")
+
+    state = await generate_node(_state(question="Estimate OOIP for a 200 acre block."))
+
+    assert seen["tools"] == [
+        "compute_porosity", "compute_ooip", "get_oil_prices", "search_geology_corpus",
+    ]
+    # The stable block carries the cache marker; per-turn rules must not.
+    assert seen["system"][0]["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in seen["system"][1]
+    # Without these the guard calls the tool's own numbers invented.
+    assert "reserves" in state.computed_quantities
+    assert state.tool_outputs == ["N = 12 MMSTB"]
+
+
+async def test_a_failing_tool_does_not_lose_the_turn(monkeypatch):
+    class FakeClient:
+        async def generate_with_tools(self, message, system, tools, tool_executor,
+                                      history=None, on_event=None):
+            return await tool_executor("get_oil_prices", {})
+
+    def boom(_):
+        raise RuntimeError("EIA down")
+
+    monkeypatch.setattr("app.agent.graph.get_llm_client", lambda: FakeClient())
+    monkeypatch.setattr("app.agent.tools.registry.market_tools.run", boom)
+
+    state = await generate_node(_state(question="What is the oil price?"))
+
+    assert "could not be" in state.answer and state.llm_used
+
+
+async def test_an_unknown_tool_name_is_reported_not_raised(monkeypatch):
+    class FakeClient:
+        async def generate_with_tools(self, message, system, tools, tool_executor,
+                                      history=None, on_event=None):
+            return await tool_executor("drill_the_well", {})
+
+    monkeypatch.setattr("app.agent.graph.get_llm_client", lambda: FakeClient())
+    state = await generate_node(_state(question="Drill it."))
+
+    assert "No such tool" in state.answer

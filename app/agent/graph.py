@@ -7,13 +7,14 @@ from typing import Literal
 
 from app.agent.prompts import (
     GENERAL_SYSTEM_PROMPT,
+    GEOLOGY_SEARCH_RULE,
     LITHOLOGY_RULES,
+    MARKET_TOOL_RULE,
     MATH_RULES,
+    NO_WELL_RULE,
+    OOIP_TOOL_RULE,
     POROSITY_TOOL_RULE,
-    RETRIEVAL_RULES,
-    build_retrieval_context,
 )
-from app.agent.tools.rag_tools import run_geology_search
 from app.core.config import settings
 from app.agent.tools.xgboost_tool import (
     UNRELIABLE_CLASSES,
@@ -25,7 +26,7 @@ from app.schemas.predictions import PredictionResponse
 from app.services import prediction_service
 from app.services.prediction_service import InvalidWellLogError
 from app.utils.las2csv_parser import UnsupportedFormatError
-from app.agent.tools import porosity_tool, rag_tools
+from app.agent.tools import registry
 from app.schemas.predictions import LithologyInterval
 from app.petrologix.compute_porosity import WellCurves
 
@@ -38,7 +39,7 @@ Route = Literal["lithology", "chat"]
 class GeoMindState:
     """State passed between nodes. One instance per request."""
 
-    # inputs
+    # inputs    
     question: str
     well_log_path: str | None = None
     well_log_filename: str | None = None
@@ -56,6 +57,8 @@ class GeoMindState:
 
     # populated by nodes
     route: Route | None = None
+    # Hard stop behind MATH_RULES: the corpus cannot serve equations.
+    corpus_available: bool = True
     prediction: PredictionResponse | None = None
     lithology_summary: str | None = None
     rag_context: str | None = None
@@ -91,12 +94,14 @@ def route_node(state: GeoMindState) -> GeoMindState:
     """
     if state.well_log_path:
         state.route = "lithology"
+        
     else:
         # No new file: reuse a summary from earlier in the session if there is one.
         state.lithology_summary = state.prior_lithology_summary
         state.intervals = state.prior_intervals
         state.curves = state.prior_curves
         state.route = "chat"
+        
     state.note(f"route={state.route}")
     
     return state
@@ -138,145 +143,101 @@ def lithology_node(state: GeoMindState) -> GeoMindState:
     return state
 
 
-async def retrieve_node(state: GeoMindState) -> GeoMindState:
-    """Geology RAG: fetch reference passages for the question.
-
-    Runs on every turn, not only chat turns. A lithology upload is usually
-    followed by an interpretation question ("is this a reservoir?"), and that is
-    exactly where the model's recall of numeric facts is weakest.
-
-    Never raises: run_geology_search swallows its own failures, and a turn with
-    no context is still a usable answer.
-    """
-    if not settings.rag_enabled:
-        state.note("retrieve=disabled")
-        return state
-
-    question = state.question.strip()
-
-    if len(question) < 8:
-        # Too short to embed usefully ("ok", "and?"); the history has the topic
-        # but the query does not, and a vague vector retrieves vague passages.
-        state.note("retrieve=skipped (query too short)")
-        return state
-
-    if is_formula_request(question):
-        # The corpus cannot serve equations. It was built from old scanned print
-        # books that predate LaTeX, so the maths came through OCR as symbol soup
-        # and chunking split what survived. Passing that to the model gives a
-        # worse answer than its own knowledge and, because RETRIEVAL_RULES tell
-        # it to prefer the passages, it copies the mangled characters instead of
-        # writing the equation properly. Claude writes these from its own
-        # training knowledge in LaTeX .
-        state.note("retrieve=skipped (equation request)")
-        return state
-
-    context, hits = await run_geology_search(question)
-
-    if context is None:
-        state.note("retrieve=unavailable")
-        return state
-
-    state.rag_context = context or None
-    state.rag_hits = hits
-    state.note(f"retrieve={hits} passages")
-
-    return state
-
-
-async def generate_node(state: GeoMindState) -> GeoMindState:
+async def generate_node(state: GeoMindState, on_event=None) -> GeoMindState:
     """Build system + user turns and call Claude.
 
     On LLM failure the tool summary is returned directly. The prediction is the
     expensive, trustworthy part of the answer; losing it because the API is down
     would be the wrong trade.
     """
-    rules = [GENERAL_SYSTEM_PROMPT]
-    blocks: list[str] = []
     question = state.question.strip()
 
+    # Byte-identical every turn, so it stays in the cached prefix with the tool
+    # schemas. Per-turn rules go in the second block or the cache misses.
+    stable_rules = [
+        GENERAL_SYSTEM_PROMPT,
+        POROSITY_TOOL_RULE,
+        OOIP_TOOL_RULE,
+        MARKET_TOOL_RULE,
+        GEOLOGY_SEARCH_RULE,
+    ]
+    turn_rules: list[str] = []
+    blocks: list[str] = []
+
     if state.lithology_summary:
-        
-        rules.append(LITHOLOGY_RULES)
-        
+
+        turn_rules.append(LITHOLOGY_RULES)
+
         blocks.append(
             "Lithology prediction for the uploaded well log:\n\n"
             f"{state.lithology_summary}\n\n"
             "This table has already been shown to the user, so do not repeat it."
         )
 
-    if state.rag_context:
-
-        rules.append(RETRIEVAL_RULES)
-        blocks.append(build_retrieval_context(state.rag_context))
+    # The tool list never changes, so this is how compute_porosity is withdrawn.
+    if not (state.intervals and (state.well_log_path or state.curves)):
+        turn_rules.append(NO_WELL_RULE)
 
     if is_formula_request(question):
-        # No passages were retrieved for this turn (retrieve_node skipped the
-        # corpus), so say where the equation comes from instead of leaving the
-        # model to imply a source it was not given.
-        rules.append(MATH_RULES)
+        turn_rules.append(MATH_RULES)
+        state.corpus_available = False
         state.note("math: answering from model knowledge")
 
-    # The one place the model, not the backend, decides whether a tool runs:
-    # "compute porosity" and "explain porosity" are the same words apart, and
-    # only the model can tell them apart. Offered only when there is a log on
-    # disk and zones to compute over -- otherwise the tool has nothing to read.
-    tools: list[dict] = []
+    if not settings.rag_enabled:
+        state.corpus_available = False
 
-    if state.intervals and (state.well_log_path or state.curves):
-        tools.append(porosity_tool.TOOL_SCHEMA)
-        rules.append(POROSITY_TOOL_RULE)
-        state.note("tool offered: compute_porosity")
+    system = [
+        {"type": "text", "text": "\n\n".join(stable_rules),
+         "cache_control": {"type": "ephemeral"}},
+    ]
+    if turn_rules:
+        system.append({"type": "text", "text": "\n\n".join(turn_rules)})
 
-    system = "\n\n".join(rules)
     user_message = "\n\n".join([*blocks, f"Question: {question}"]) if blocks else question
 
     state.note(f"prompt~{len(user_message) // 4}tok")
 
-    def execute_tool(name: str, tool_input: dict) -> str:
-        """Run a tool for the model. Claude never sees the LAS -- the tool reads
-        it here and returns only its text summary, as the lithology tool does.
-        """
-        if name != porosity_tool.TOOL_SCHEMA["name"]:
+    async def execute_tool(name: str, tool_input: dict) -> str:
+        """Run whichever tool the model picked. Claude never sees the LAS --
+        the tool reads it here and returns only its text summary."""
+        tool = registry.BY_NAME.get(name)
+
+        if tool is None:
             logger.warning("model requested unknown tool %r", name)
             return f"No such tool: {name}"
 
         try:
-            summary = porosity_tool.run(state, tool_input)
+            summary = await tool.run(state, tool_input)
 
         except Exception:
             # A failed tool must not lose the turn: hand the model the failure so
             # it can say so, rather than raising and dropping the whole answer.
-            logger.exception("porosity tool failed")
+            logger.exception("tool %s failed", name)
             return (
-                "The porosity calculation failed. Tell the user it could not be "
+                f"The {name} tool failed. Tell the user it could not be "
                 "computed; do not estimate a value."
             )
 
         # Without these the guards flag the tool's own numbers as invented.
-        state.computed_quantities |= porosity_tool.MEASURES
+        state.computed_quantities |= tool.measures
         state.tool_outputs.append(summary)
-        state.note("tool: compute_porosity")
+        state.note(f"tool: {name}")
 
         return summary
 
     try:
-        if tools:
-            state.answer = await get_llm_client().generate_with_tools(
-                user_message,
-                system=system,
-                tools=tools,
-                tool_executor=execute_tool,
-                history=state.history,
-            )
-        else:
-            state.answer = await get_llm_client().generate(
-                user_message, system=system, history=state.history
-            )
+        state.answer = await get_llm_client().generate_with_tools(
+            user_message,
+            system=system,
+            tools=registry.SCHEMAS,
+            tool_executor=execute_tool,
+            history=state.history,
+            on_event=on_event,
+        )
 
         state.llm_used = True
         state.note("llm ok")
-        
+
     except LLMUnavailableError as e:
         
         logger.warning("LLM unavailable, falling back to the tool summary: %s", e)
@@ -390,14 +351,14 @@ _WELL_SPECIFIC_RE = re.compile(
     re.I,
 )
 
-
+# MY CORPUS FAILS TO RETRIEVE FORMULAS AND MATH EXPRESSIONS
 def is_formula_request(question: str) -> bool:
     """True when the user wants a general equation or derivation rather than an
     interpretation of this well's measured properties.
 
     Two things hang off this. The unsupported-quantity guard stands down,
     because a worked example uses illustrative numbers rather than claims about
-    the well. And retrieve_node skips the corpus entirely: the books were
+    the well. And the corpus-search tool refuses to run: the books were
     scanned from pre-LaTeX print, so equations came through chunking as symbol
     soup, and a retrieved passage is actively worse than Claude's own recall for
     this one class of question. See _NAMED_EQUATION_RE for why bare names count.
@@ -413,7 +374,7 @@ def is_formula_request(question: str) -> bool:
     )
 
 
-# A bracketed passage number, e.g. "[2]". RETRIEVAL_RULES require one next to any
+# A bracketed passage number, e.g. "[2]". GEOLOGY_SEARCH_RULE requires one next to any
 # fact taken from the corpus.
 _CITATION_RE = re.compile(r"\[\d{1,2}\]")
 
@@ -452,8 +413,8 @@ def find_unsupported_quantities(
 
 
 _CONFIDENCE_RE = re.compile(
-    r"\b(?:confidence|probability|certainty)\b[^.\n]{0,30}?(\d\d?\d?(?:\.\d+)?)\s*(%?)"
-    r"|(\d\d?\d?(?:\.\d+)?)\s*(%?)[^.\n]{0,20}?\b(?:confidence|probability|certainty)\b",
+    r"\b(?:confidence|probability|certainty)\b[^.\n|]{0,30}?(\d\d?\d?(?:\.\d+)?)\s*(%?)"
+    r"|(\d\d?\d?(?:\.\d+)?)\s*(%?)[^.\n|]{0,20}?\b(?:confidence|probability|certainty)\b",
     re.I,
 )
 _SUMMARY_NUMBER_RE = re.compile(r"\b(0\.\d+|1\.0+)\b")
@@ -466,6 +427,13 @@ _NO_PREDICTION_NOTE = (
 _MISMATCHED_CONFIDENCE_NOTE = (
     "Correction: the confidence values {values} do not appear in this well's "
     "prediction. Trust the measured result above, not these figures. "
+)
+# "low confidence" is a qualitative label, so a number before it belongs to
+# something else -- a porosity cell, a washout fraction.
+_QUALITATIVE_RE = re.compile(
+    r"\b(?:low|lower|high|higher|poor|good|weak|strong|moderate)[-\s]"
+    r"(?:confidence|probability|certainty)\b",
+    re.I,
 )
 _THRESHOLD_RE = re.compile(
     r"\b(?:below|above|under|over|less than|greater than|at least|at most|"
@@ -483,7 +451,13 @@ def _confidence_values(answer: str) -> list[float]:
         if _THRESHOLD_RE.search(m.group(0)):
             continue
         
-        raw, pct = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
+        if m.group(1):
+            raw, pct = m.group(1), m.group(2)
+        else:
+            # number-before-keyword: only a real claim if the keyword is unqualified
+            if _QUALITATIVE_RE.search(m.group(0)):
+                continue
+            raw, pct = m.group(3), m.group(4)
         try:
             value = float(raw)
             
@@ -543,11 +517,13 @@ def guard_node(state: GeoMindState) -> GeoMindState:
         state.answer, state.lithology_summary, state.tool_outputs
     )
     if no_prediction:
+        
         notes.append(_NO_PREDICTION_NOTE)
         state.note("guard: confidence claimed with no prediction")
         logger.error("model quoted confidence with no prediction in session")
         
     elif mismatched:
+        
         notes.append(_MISMATCHED_CONFIDENCE_NOTE.format(values=", ".join(mismatched)))
         state.note(f"guard: mismatched confidence ({', '.join(mismatched)})")
         logger.error("model quoted confidence %s absent from prediction", mismatched)
@@ -628,12 +604,14 @@ async def run(
     prior_lithology_summary: str | None = None,
     prior_intervals: list[LithologyInterval] | None = None,
     prior_curves: WellCurves | None = None,
+    on_event=None,
 ) -> GeoMindResult:
     """Execute the flow.
 
-        route -> [lithology] -> retrieve -> generate -> guard
+        route -> [lithology] -> generate -> guard
 
-    (retrieve is skipped for equation questions -- see is_formula_request.)
+    Retrieval, porosity, OOIP and prices are tools the model calls from inside
+    generate, not steps in this pipeline.
 
     Both structured prediction and prose answer come back, so the caller can
     render the log track and the chat bubble from one request.
@@ -654,14 +632,8 @@ async def run(
     if state.route == "lithology":
         state = lithology_node(state)
         
-    # RAG is back on the flow. It was disconnected because retrieved passages
-    # degraded answers, and the failure was specific: equations. The corpus is
-    # OCR'd pre-LaTeX print, so its maths is unusable, while its prose on
-    # depositional environments, traps and rock properties is sound and is the
-    # part worth citing. retrieve_node now skips the corpus for equation
-    # questions and consults it for everything else.
-    state = await retrieve_node(state)
-    state = await generate_node(state)
+    # RAG is a tool now, not a node: the model decides when to search.
+    state = await generate_node(state, on_event=on_event)
     state = guard_node(state)
 
     logger.info("graph: %s", " -> ".join(state.trace))
