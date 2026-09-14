@@ -230,7 +230,8 @@ def test_porosity_table_percentages_are_not_confidence_claims():
 # tool loop
 def test_every_registered_tool_has_a_schema_and_runner():
     assert {t.name for t in registry.TOOLS} == {
-        "compute_porosity", "compute_ooip", "get_oil_prices", "search_geology_corpus",
+        "compute_porosity", "compute_ooip", "get_oil_prices", "get_rock_properties",
+        "search_geology_corpus",
     }
     assert len(registry.SCHEMAS) == len(registry.TOOLS)
 
@@ -251,7 +252,8 @@ async def test_generate_node_offers_every_tool_and_records_what_they_measure(mon
     state = await generate_node(_state(question="Estimate OOIP for a 200 acre block."))
 
     assert seen["tools"] == [
-        "compute_porosity", "compute_ooip", "get_oil_prices", "search_geology_corpus",
+        "compute_porosity", "compute_ooip", "get_oil_prices", "get_rock_properties",
+        "search_geology_corpus",
     ]
     # The stable block carries the cache marker; per-turn rules must not.
     assert seen["system"][0]["cache_control"] == {"type": "ephemeral"}
