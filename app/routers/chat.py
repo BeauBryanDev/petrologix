@@ -2,6 +2,7 @@
 import logging
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.schemas.chats import ChatRequest, ChatResponse, SessionInfo
 from app.services import chat_service
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 """Chat endpoints for the geologist assistant."""
 
-# The chat endpoint is the main entry point for the geologist assistant. It is a thin wrapper around the chat_service, which orchestrates the LLM and lithology model calls. 
+# The chat endpoint is the main entry point for the geologist assistant.
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
     """Ask the geologist assistant a question.
@@ -32,6 +33,20 @@ async def chat(request: ChatRequest) -> ChatResponse:
         
         logger.exception("chat failed")
         raise HTTPException(500, "chat failed")
+
+@router.post("/chat/stream")
+async def chat_stream(request: ChatRequest) -> StreamingResponse:
+    """The same turn as POST /chat, streamed as server-sent events.
+
+    Events: `delta` (text chunk), `tool` (a tool is running; discard text so
+    far), `done` (the full ChatResponse, corrections included), `error`.
+    """
+    return StreamingResponse(
+        chat_service.chat_stream(request),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
 
 # The session info endpoint is not documented because it is not used by the
 # demo frontend. It is used by the agent to remember the well context.

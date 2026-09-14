@@ -14,7 +14,8 @@ from app.utils.las2csv_parser import UnsupportedFormatError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["prediction"])
-"""Lithology prediction endpoints."""
+
+# The prediction endpoint is the main entry point for the geologist assistant.
 
 @router.get("/model/info", response_model=ModelInfo)
 def model_info() -> ModelInfo:
@@ -33,10 +34,13 @@ async def predict(
         
         False, description="Include per-depth rows for plotting (~10k). "
                            "Never pass these to an LLM."),
+    
     min_thickness_m: float | None = Query(
         None, ge=0, description="Minimum zone thickness in metres."),
+    
     include_curves: bool = Query(
         False, description="Include downsampled curve data for the log-track chart."),
+    
     session_id: str | None = Query(
         None, description="Attach this prediction to a chat session so follow-up "
                           "questions at POST /chat can refer to the well without "
@@ -44,10 +48,6 @@ async def predict(
 ) -> PredictionResponse:
     
     """Predict lithology for an uploaded well log.
-
-    Returns depth intervals. An out-of-distribution well returns an empty
-    `intervals` list with `distribution.status == "out_of_distribution"` and an
-    explanatory message -- a 200, not an error, so the agent can relay the reason.
     """
     suffix = Path(file.filename or "upload").suffix or ".csv"
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -56,9 +56,12 @@ async def predict(
         size = 0
         while chunk := await file.read(1024 * 1024):
             size += len(chunk)
+            
             if size > max_bytes:
+                
                 Path(tmp.name).unlink(missing_ok=True)
                 raise HTTPException(413, f"file exceeds {settings.max_upload_mb} MB")
+            
             tmp.write(chunk)
             
         tmp_path = tmp.name
@@ -82,6 +85,7 @@ async def predict(
                 well_log_filename=file.filename or "upload",
             )
         return result
+    
     except UnsupportedFormatError as e:
         raise HTTPException(415, str(e))
     
@@ -93,4 +97,5 @@ async def predict(
         raise HTTPException(500, "prediction failed")
     
     finally:
+        
         Path(tmp_path).unlink(missing_ok=True)

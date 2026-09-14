@@ -47,7 +47,7 @@ async def _run_market(state, tool_input: dict) -> str:
 async def _run_rock_properties(state, tool_input: dict) -> str:
     return rock_properties_tool.run(tool_input)
 
-
+# this is the Geogloy corpus -> context adapter
 async def _run_geology_search(state, tool_input: dict) -> str:
     """
     Search the corpus and record the hit on the state.

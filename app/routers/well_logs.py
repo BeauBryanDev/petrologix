@@ -30,8 +30,10 @@ def sample_curves(sample_id: str):
     return well_log_service.build_curves(df)
 
 
-@router.get("/wells/samples/{sample_id}/analyze", response_model=PredictionResponse)
-def analyze_sample(sample_id: str, session_id: str | None = None):
+@router.get("/wells/samples/{sample_id}/analyze", 
+            response_model=PredictionResponse)
+def analyze_sample(sample_id: str, 
+                   session_id: str | None = None):
     """Predict lithology for a bundled sample well, with curves for the chart."""
     try:
         path = well_log_service.sample_path(sample_id)
@@ -49,8 +51,12 @@ def analyze_sample(sample_id: str, session_id: str | None = None):
         from app.agent.tools.xgboost_tool import summarize_prediction
         from app.services import chat_service
         
+        # Sample files are permanent, but attach_prediction reads the curves
+        # now anyway so the porosity tool works on later chat turns.
         chat_service.store.attach_prediction(
-            session_id, result, summarize_prediction(result)
+            session_id, result, summarize_prediction(result),
+            well_log_path=str(path), 
+            well_log_filename=path.name,
         )
         
     return result
