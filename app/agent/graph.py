@@ -14,6 +14,7 @@ from app.agent.prompts import (
     NO_WELL_RULE,
     OOIP_TOOL_RULE,
     POROSITY_TOOL_RULE,
+    ROCK_PROPERTIES_TOOL_RULE,
 )
 from app.core.config import settings
 from app.agent.tools.xgboost_tool import (
@@ -159,6 +160,7 @@ async def generate_node(state: GeoMindState, on_event=None) -> GeoMindState:
         POROSITY_TOOL_RULE,
         OOIP_TOOL_RULE,
         MARKET_TOOL_RULE,
+        ROCK_PROPERTIES_TOOL_RULE,
         GEOLOGY_SEARCH_RULE,
     ]
     turn_rules: list[str] = []
@@ -197,7 +199,9 @@ async def generate_node(state: GeoMindState, on_event=None) -> GeoMindState:
 
     state.note(f"prompt~{len(user_message) // 4}tok")
 
-    async def execute_tool(name: str, tool_input: dict) -> str:
+    async def execute_tool(name: str, 
+                           tool_input: dict
+                           ) -> str:
         """Run whichever tool the model picked. Claude never sees the LAS --
         the tool reads it here and returns only its text summary."""
         tool = registry.BY_NAME.get(name)

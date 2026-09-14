@@ -1,7 +1,10 @@
 
 import logging
 
-from app.agent.prompts import GENERAL_SYSTEM_PROMPT, LITHOLOGY_RULES, LITHOLOGY_CONTEXT_TEMPLATE
+from app.agent.prompts import (
+    GENERAL_SYSTEM_PROMPT, 
+    LITHOLOGY_RULES, 
+    LITHOLOGY_CONTEXT_TEMPLATE )
 
 
 logger = logging.getLogger(__name__)
@@ -26,7 +29,8 @@ def build_message(
 ) -> str:
     """Compose one message for the LLM.
     question : the user's current question.
-    lithology_summary : output of `xgboost_tool.run_lithology_tool`, when a well log has been analysed.
+    lithology_summary : output of `xgboost_tool.run_lithology_tool`, 
+    when a well log has been analysed.
     history : prior turns as [{"role": "user"|"assistant", "content": str}].
     include_rules : whether to include the lithology rules.
     """
