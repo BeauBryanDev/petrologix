@@ -1,0 +1,404 @@
+{
+  "dataset_name": "Representative Geological Rock Properties",
+  "dataset_version": "1.0",
+  "units": {
+    "density": "g/cm3",
+    "electrical_conductivity": "S/m",
+    "electrical_resistivity": "ohm_m",
+    "mohs_hardness": "Mohs",
+    "porosity": "percent"
+  },
+  "notes": [
+    "Physical properties are representative ranges rather than fixed constants.",
+    "Electrical conductivity and resistivity are reciprocal properties.",
+    "Electrical properties vary strongly with porosity, pore-fluid salinity, water saturation, clay content, temperature, fractures and mineralization.",
+    "Porosity values represent typical ranges for relatively intact natural rock and can vary substantially with burial, cementation, fracturing and alteration.",
+    "Mohs hardness is approximate for rocks because rocks are aggregates of minerals rather than single minerals."
+  ],
+  "disclaimer":[
+   "Conductivity and resistivity are reciprocal quantities:",
+   " electrical conductivity  = 1/( electrical resistivity)",
+   "The USGS describes resistivity in Ω·m and conductivity in S/m and notes that pore fluids  particularly saline fluids—can dramatically reduce resistivity. Clay minerals, graphite, and metallic mineralization can also make rocks much more conductive."
+
+   ],
+  "rocks": [
+
+    {
+      "rock_name": "Shale",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.20, 2.70],
+      "avg_density": 2.50,
+      "conductivity_min_max": [0.002, 1.0],
+      "resistivity_min_max": [1.0, 500.0],
+      "mohs_hardness": [2.0, 4.0],
+      "mineral_composition": "Primarily clay minerals (illite, smectite, kaolinite), quartz, feldspar and variable organic matter and carbonate minerals.",
+      "porosity": [5.0, 30.0],
+      "formation_env": "Low-energy marine, lacustrine, deltaic or floodplain environments where fine-grained clay and silt accumulate and undergo compaction and lithification.",
+      "geophysical_signature": "Generally low resistivity and relatively high conductivity compared with clean sandstone because of clay minerals and conductive pore fluids. Typically moderate-to-low density and low-to-moderate seismic velocity."
+    },
+
+    {
+      "rock_name": "Sandstone",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.00, 2.70],
+      "avg_density": 2.35,
+      "conductivity_min_max": [0.00001, 0.05],
+      "resistivity_min_max": [20.0, 100000.0],
+      "mohs_hardness": [6.0, 7.0],
+      "mineral_composition": "Dominantly quartz with variable feldspar, lithic fragments, clay minerals and carbonate or silica cement.",
+      "porosity": [5.0, 35.0],
+      "formation_env": "Fluvial, deltaic, aeolian, shallow-marine, coastal and submarine depositional environments.",
+      "geophysical_signature": "Clean, dry sandstone is commonly highly resistive, whereas water-saturated sandstone can show much lower resistivity. Porosity and pore-fluid salinity strongly control electrical response. Common reservoir rock with strong acoustic and density-log response."
+    },
+
+    {
+      "rock_name": "Limestone",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.30, 2.80],
+      "avg_density": 2.60,
+      "conductivity_min_max": [0.000001, 0.01],
+      "resistivity_min_max": [100.0, 1000000.0],
+      "mohs_hardness": [3.0, 4.0],
+      "mineral_composition": "Primarily calcite, with variable aragonite, dolomite, quartz, clay minerals and organic material.",
+      "porosity": [1.0, 30.0],
+      "formation_env": "Marine carbonate platforms, shallow tropical seas, reefs, shelves, lagoons and carbonate mud environments.",
+      "geophysical_signature": "Typically moderate-to-high resistivity when dense and dry. Fractured or water-filled limestone can become considerably more conductive. Relatively high density and seismic velocity compared with many clastic sediments."
+    },
+
+    {
+      "rock_name": "Dolomite",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.40, 2.90],
+      "avg_density": 2.70,
+      "conductivity_min_max": [0.000001, 0.005],
+      "resistivity_min_max": [200.0, 1000000.0],
+      "mohs_hardness": [3.5, 4.0],
+      "mineral_composition": "Dominantly dolomite mineral [CaMg(CO3)2], with variable calcite, quartz, clay and other carbonate minerals.",
+      "porosity": [1.0, 25.0],
+      "formation_env": "Primarily shallow-marine carbonate platforms and restricted marine environments; commonly produced by dolomitization of limestone.",
+      "geophysical_signature": "Generally relatively high resistivity and density. Porosity may be enhanced by dolomitization and dissolution, producing heterogeneous electrical and acoustic responses."
+    },
+
+    {
+      "rock_name": "Conglomerate",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.00, 2.60],
+      "avg_density": 2.35,
+      "conductivity_min_max": [0.0001, 0.02],
+      "resistivity_min_max": [50.0, 10000.0],
+      "mohs_hardness": [5.0, 7.0],
+      "mineral_composition": "Rounded gravel-sized clasts of quartzite, granite, limestone, sandstone and other rocks within a sand, silt or clay matrix and cement.",
+      "porosity": [5.0, 30.0],
+      "formation_env": "High-energy fluvial channels, alluvial fans, braided rivers, beaches and conglomeratic deltaic environments.",
+      "geophysical_signature": "Highly variable electrical and seismic properties because clast composition, matrix and pore-fluid content vary strongly. Often relatively resistive when clean and dry."
+    },
+
+    {
+      "rock_name": "Breccia",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.00, 2.70],
+      "avg_density": 2.40,
+      "conductivity_min_max": [0.0001, 0.02],
+      "resistivity_min_max": [50.0, 10000.0],
+      "mohs_hardness": [5.0, 7.0],
+      "mineral_composition": "Angular fragments of pre-existing rocks within a finer-grained matrix and cement; composition depends strongly on source rocks.",
+      "porosity": [5.0, 30.0],
+      "formation_env": "Fault zones, talus slopes, debris flows, volcanic environments, collapse structures and high-energy sedimentary systems.",
+      "geophysical_signature": "Strongly heterogeneous geophysical response. Fracture-related breccias may have high porosity and fluid conductivity, while well-cemented breccias can be dense and resistive."
+    },
+
+    {
+      "rock_name": "Mudstone",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.10, 2.60],
+      "avg_density": 2.40,
+      "conductivity_min_max": [0.005, 1.0],
+      "resistivity_min_max": [1.0, 200.0],
+      "mohs_hardness": [2.0, 4.0],
+      "mineral_composition": "Clay minerals, quartz and feldspar with variable carbonate minerals, organic matter and iron oxides.",
+      "porosity": [5.0, 35.0],
+      "formation_env": "Low-energy marine, lacustrine, floodplain and distal deltaic depositional environments.",
+      "geophysical_signature": "Typically conductive and relatively low-resistivity because of clay minerals and pore fluids. Usually lower density and acoustic velocity than carbonate and crystalline basement rocks."
+    },
+
+    {
+      "rock_name": "Siltstone",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.10, 2.70],
+      "avg_density": 2.40,
+      "conductivity_min_max": [0.001, 0.2],
+      "resistivity_min_max": [5.0, 1000.0],
+      "mohs_hardness": [4.0, 6.0],
+      "mineral_composition": "Dominantly quartz and feldspar silt with variable clay minerals, mica, carbonate cement and lithic fragments.",
+      "porosity": [5.0, 25.0],
+      "formation_env": "Floodplains, offshore shelves, distal deltas, lakes and other relatively low-energy depositional settings.",
+      "geophysical_signature": "Intermediate electrical behavior between sandstone and shale. Clay content and pore-fluid salinity can significantly lower resistivity."
+    },
+
+    {
+      "rock_name": "Gypsum",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.20, 2.40],
+      "avg_density": 2.30,
+      "conductivity_min_max": [0.00001, 0.01],
+      "resistivity_min_max": [100.0, 100000.0],
+      "mohs_hardness": [2.0, 2.0],
+      "mineral_composition": "Dominantly gypsum, CaSO4·2H2O, with variable anhydrite, halite, carbonate and clay impurities.",
+      "porosity": [1.0, 20.0],
+      "formation_env": "Evaporitic basins, restricted marine lagoons, sabkhas, saline lakes and arid playa environments.",
+      "geophysical_signature": "Relatively low density and potentially high resistivity when dry and pure. Hydration/dehydration and pore fluids strongly influence electrical and density properties."
+    },
+
+    {
+      "rock_name": "Halite",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.10, 2.20],
+      "avg_density": 2.16,
+      "conductivity_min_max": [0.0000001, 0.001],
+      "resistivity_min_max": [1000.0, 10000000.0],
+      "mohs_hardness": [2.0, 2.5],
+      "mineral_composition": "Dominantly halite, NaCl, with variable anhydrite, gypsum, sylvite, clay and other evaporite minerals.",
+      "porosity": [0.0, 5.0],
+      "formation_env": "Large evaporitic marine basins, restricted seas, saline lakes and arid evaporite systems.",
+      "geophysical_signature": "Very high resistivity when pure, dry and massive. Salt has low porosity and low electrical conductivity, making it a strong resistive body in electromagnetic and resistivity surveys. Salt diapirs can produce strong gravity and seismic velocity contrasts."
+    },
+
+    {
+      "rock_name": "Marble",
+      "lithology_class": "Metamorphic",
+      "density_min_max": [2.60, 2.80],
+      "avg_density": 2.70,
+      "conductivity_min_max": [0.000001, 0.01],
+      "resistivity_min_max": [100.0, 1000000.0],
+      "mohs_hardness": [3.0, 4.0],
+      "mineral_composition": "Recrystallized calcite and/or dolomite with minor quartz, mica, graphite, pyrite and other accessory minerals.",
+      "porosity": [0.1, 5.0],
+      "formation_env": "Forms by metamorphism of limestone or dolostone under elevated temperature and pressure, commonly in regional or contact metamorphic zones.",
+      "geophysical_signature": "Generally dense and relatively resistive when dry and pure. Graphite, sulfides, fractures and fluids can substantially increase conductivity."
+    },
+
+    {
+      "rock_name": "Quartzite",
+      "lithology_class": "Metamorphic",
+      "density_min_max": [2.60, 2.75],
+      "avg_density": 2.68,
+      "conductivity_min_max": [0.0000001, 0.001],
+      "resistivity_min_max": [1000.0, 10000000.0],
+      "mohs_hardness": [7.0, 7.0],
+      "mineral_composition": "Predominantly recrystallized quartz, commonly greater than 90 percent, with minor feldspar, mica and accessory minerals.",
+      "porosity": [0.1, 5.0],
+      "formation_env": "Regional or contact metamorphism of quartz-rich sandstone under elevated temperature and pressure.",
+      "geophysical_signature": "Very hard, dense and commonly highly resistive. Fracturing and fluid-filled joints can produce significant local conductivity."
+    },
+
+    {
+      "rock_name": "Slate",
+      "lithology_class": "Metamorphic",
+      "density_min_max": [2.60, 2.90],
+      "avg_density": 2.75,
+      "conductivity_min_max": [0.0001, 0.01],
+      "resistivity_min_max": [100.0, 10000.0],
+      "mohs_hardness": [3.0, 5.0],
+      "mineral_composition": "Very fine-grained quartz, mica, chlorite and clay-derived minerals, with variable feldspar and iron-bearing minerals.",
+      "porosity": [0.1, 5.0],
+      "formation_env": "Low-grade regional metamorphism of shale or mudstone, typically in compressional tectonic environments.",
+      "geophysical_signature": "Strongly anisotropic because of slaty cleavage. Electrical and seismic properties may vary substantially with measurement direction relative to foliation."
+    },
+
+    {
+      "rock_name": "Schist",
+      "lithology_class": "Metamorphic",
+      "density_min_max": [2.60, 3.00],
+      "avg_density": 2.75,
+      "conductivity_min_max": [0.000001, 0.001],
+      "resistivity_min_max": [1000.0, 1000000.0],
+      "mohs_hardness": [4.0, 6.0],
+      "mineral_composition": "Variable mixtures of mica, quartz, feldspar, chlorite, garnet, amphibole and other metamorphic minerals.",
+      "porosity": [0.1, 5.0],
+      "formation_env": "Medium-grade regional metamorphism of shale, mudstone or other protoliths during mountain-building and crustal deformation.",
+      "geophysical_signature": "Strong anisotropy caused by aligned mica and foliation. Graphite or sulfide-rich schists can be unusually conductive."
+    },
+
+    {
+      "rock_name": "Gneiss",
+      "lithology_class": "Metamorphic",
+      "density_min_max": [2.60, 3.00],
+      "avg_density": 2.75,
+      "conductivity_min_max": [0.0000001, 0.001],
+      "resistivity_min_max": [1000.0, 10000000.0],
+      "mohs_hardness": [6.0, 7.0],
+      "mineral_composition": "Quartz, feldspar and mica with variable amphibole, pyroxene, garnet and other metamorphic minerals arranged in compositional bands.",
+      "porosity": [0.1, 3.0],
+      "formation_env": "High-grade regional metamorphism of sedimentary or igneous protoliths at elevated temperature and pressure.",
+      "geophysical_signature": "Generally dense, strong and resistive. Foliation produces seismic and electrical anisotropy. Mafic gneiss can be denser and more conductive than felsic gneiss."
+    },
+
+    {
+      "rock_name": "Granite",
+      "lithology_class": "Igneous",
+      "density_min_max": [2.60, 2.80],
+      "avg_density": 2.67,
+      "conductivity_min_max": [0.00000001, 0.001],
+      "resistivity_min_max": [1000.0, 100000000.0],
+      "mohs_hardness": [6.0, 7.0],
+      "mineral_composition": "Quartz, alkali feldspar and plagioclase with variable biotite, muscovite, amphibole and accessory minerals.",
+      "porosity": [0.1, 5.0],
+      "formation_env": "Slow crystallization of felsic magma deep within continental crust, commonly associated with continental arcs and mountain-building environments.",
+      "geophysical_signature": "Generally high resistivity and moderate-to-high density. Fractures and groundwater can strongly reduce resistivity. Often forms resistive crystalline basement."
+    },
+
+    {
+      "rock_name": "Basalt",
+      "lithology_class": "Igneous",
+      "density_min_max": [2.70, 3.10],
+      "avg_density": 2.95,
+      "conductivity_min_max": [0.000001, 0.01],
+      "resistivity_min_max": [100.0, 1000000.0],
+      "mohs_hardness": [6.0, 7.0],
+      "mineral_composition": "Primarily plagioclase and pyroxene with variable olivine, magnetite and other mafic minerals.",
+      "porosity": [0.5, 15.0],
+      "formation_env": "Rapid extrusion of mafic magma at oceanic ridges, hotspots, continental flood basalts and volcanic arcs.",
+      "geophysical_signature": "High density and generally moderate-to-high resistivity when fresh and massive. Alteration and fluid-filled fractures can make basalt substantially more conductive. Strong magnetic response is common."
+    },
+
+    {
+      "rock_name": "Gabbro",
+      "lithology_class": "Igneous",
+      "density_min_max": [2.80, 3.20],
+      "avg_density": 3.00,
+      "conductivity_min_max": [0.0000001, 0.001],
+      "resistivity_min_max": [1000.0, 10000000.0],
+      "mohs_hardness": [6.0, 7.0],
+      "mineral_composition": "Predominantly calcium-rich plagioclase and pyroxene with variable olivine, amphibole and iron-titanium oxides.",
+      "porosity": [0.1, 5.0],
+      "formation_env": "Slow crystallization of mafic magma within the lower oceanic crust or shallow-to-deep intrusive bodies.",
+      "geophysical_signature": "High density and generally resistive crystalline rock. Mafic mineral content can produce strong magnetic and gravity anomalies."
+    },
+
+    {
+      "rock_name": "Diorite",
+      "lithology_class": "Igneous",
+      "density_min_max": [2.70, 3.00],
+      "avg_density": 2.85,
+      "conductivity_min_max": [0.0000001, 0.001],
+      "resistivity_min_max": [1000.0, 10000000.0],
+      "mohs_hardness": [6.0, 7.0],
+      "mineral_composition": "Plagioclase feldspar with amphibole, biotite and minor pyroxene and quartz.",
+      "porosity": [0.1, 5.0],
+      "formation_env": "Intermediate intrusive magma crystallizing slowly within continental crust, commonly associated with volcanic arcs and plutonic complexes.",
+      "geophysical_signature": "Moderate-to-high density and generally high resistivity. Mafic mineral abundance influences magnetic susceptibility and density."
+    },
+
+    {
+      "rock_name": "Rhyolite",
+      "lithology_class": "Igneous",
+      "density_min_max": [2.30, 2.70],
+      "avg_density": 2.55,
+      "conductivity_min_max": [0.00000001, 0.001],
+      "resistivity_min_max": [1000.0, 100000000.0],
+      "mohs_hardness": [6.0, 7.0],
+      "mineral_composition": "Quartz, alkali feldspar and plagioclase with variable biotite, hornblende and volcanic glass.",
+      "porosity": [1.0, 20.0],
+      "formation_env": "Rapid eruption of silica-rich magma in continental volcanic arcs, calderas and explosive volcanic systems.",
+      "geophysical_signature": "Generally low-to-moderate density and high resistivity when fresh. Porous, fractured or hydrothermally altered rhyolite can have significantly lower resistivity."
+    },
+
+    {
+      "rock_name": "Marl",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.00, 2.60],
+      "avg_density": 2.35,
+      "conductivity_min_max": [0.0001, 0.1],
+      "resistivity_min_max": [10.0, 10000.0],
+      "mohs_hardness": [2.0, 4.0],
+      "mineral_composition": "Mixture of carbonate minerals, principally calcite, with significant clay minerals and variable quartz and organic matter.",
+      "porosity": [10.0, 40.0],
+      "formation_env": "Low-energy marine, lacustrine and shelf environments where carbonate mud and fine siliciclastic clay accumulate together.",
+      "geophysical_signature": "Intermediate to relatively conductive behavior due to clay content and pore fluids. Density and resistivity generally lie between clean limestone and shale."
+    },
+
+    {
+      "rock_name": "Anhydrite",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.85, 3.00],
+      "avg_density": 2.95,
+      "conductivity_min_max": [0.0000001, 0.001],
+      "resistivity_min_max": [1000.0, 10000000.0],
+      "mohs_hardness": [3.0, 3.5],
+      "mineral_composition": "Dominantly anhydrite, CaSO4, with variable gypsum, halite, dolomite, calcite and clay impurities.",
+      "porosity": [0.0, 5.0],
+      "formation_env": "Evaporitic marine basins, sabkhas, restricted lagoons and sulfate-rich evaporite sequences; can also form by dehydration of gypsum.",
+      "geophysical_signature": "Relatively high density and generally high resistivity when massive and dry. Often produces a strong density contrast with surrounding sedimentary rocks."
+    },
+
+    {
+      "rock_name": "Coal",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [1.10, 1.60],
+      "avg_density": 1.35,
+      "conductivity_min_max": [0.00001, 0.01],
+      "resistivity_min_max": [100.0, 100000.0],
+      "mohs_hardness": [2.0, 3.0],
+      "mineral_composition": "Predominantly organic carbon-rich macerals derived from plant material, with variable moisture, mineral matter, clay, quartz, pyrite and carbonate minerals.",
+      "porosity": [2.0, 20.0],
+      "formation_env": "Peat-forming wetlands and swamps followed by burial, compaction and coalification within sedimentary basins.",
+      "geophysical_signature": "Low density relative to most sedimentary rocks and commonly relatively resistive, particularly when dry. Shale partings, moisture, pyrite and mineral matter can strongly alter the electrical response."
+    },
+
+    {
+      "rock_name": "Tuff",
+      "lithology_class": "Igneous",
+      "density_min_max": [1.20, 2.40],
+      "avg_density": 1.80,
+      "conductivity_min_max": [0.000001, 0.01],
+      "resistivity_min_max": [100.0, 1000000.0],
+      "mohs_hardness": [2.0, 6.0],
+      "mineral_composition": "Consolidated volcanic ash, glass shards and fragmented crystals or lithic particles; composition may be rhyolitic, dacitic, andesitic or basaltic.",
+      "porosity": [10.0, 50.0],
+      "formation_env": "Explosive volcanic eruptions producing ash fall, pyroclastic flows and ash-rich volcanic deposits.",
+      "geophysical_signature": "Highly variable density and resistivity due to vesicularity, welding, alteration and saturation. Welded tuff is denser and less porous than non-welded tuff. Hydrothermal alteration can strongly increase conductivity."
+    },
+
+    {
+      "rock_name": "Sandstone/Shale",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [2.10, 2.65],
+      "avg_density": 2.40,
+      "conductivity_min_max": [0.0001, 0.5],
+      "resistivity_min_max": [2.0, 10000.0],
+      "mohs_hardness": [2.0, 7.0],
+      "mineral_composition": "Shaly (dirty) sandstone or thinly interbedded sand and shale: a mixed siliciclastic lithology containing variable quartz and feldspar from sandstone together with clay minerals and fine-grained matrix from shale.",
+      "porosity": [5.0, 30.0],
+      "formation_env": "Fluvial, deltaic, coastal, shallow-marine and turbiditic environments where sand and mud are deposited in alternating beds or mixed facies.",
+      "geophysical_signature": "Highly variable electrical response. Clean sandstone intervals can be resistive, while shale-rich intervals are substantially more conductive. Strong lithological contrasts commonly appear in well-log resistivity and gamma-ray data."
+    },
+
+    {
+      "rock_name": "Chalk",
+      "lithology_class": "Sedimentary",
+      "density_min_max": [1.80, 2.60],
+      "avg_density": 2.20,
+      "conductivity_min_max": [0.001, 1.0],
+      "resistivity_min_max": [1.0, 1000.0],
+      "mohs_hardness": [2.0, 3.0],
+      "mineral_composition": "Very pure, fine-grained low-magnesium calcite, commonly over 90 percent, built of coccolith plates and other calcareous nannofossils, with minor clay, quartz silt and chert (flint) nodules.",
+      "porosity": [5.0, 45.0],
+      "formation_env": "Pelagic settling of calcareous nannofossil ooze in open marine shelf seas, most extensively in the Late Cretaceous to Paleocene; the North Sea Chalk Group (Tor and Ekofisk formations) is a major reservoir.",
+      "geophysical_signature": "High porosity but low matrix permeability, so bulk density and sonic velocity drop sharply as porosity rises and increase with burial compaction. Water-saturated chalk is relatively conductive, hydrocarbon-bearing chalk markedly more resistive. Low gamma ray where clean; clay seams and chert layers stand out as log contrasts."
+    },
+
+    {
+      "rock_name": "Basement",
+      "lithology_class": "Igneous/Metamorphic",
+      "density_min_max": [2.60, 3.00],
+      "avg_density": 2.75,
+      "conductivity_min_max": [0.0000001, 0.001],
+      "resistivity_min_max": [1000.0, 10000000.0],
+      "mohs_hardness": [5.0, 7.0],
+      "mineral_composition": "Crystalline igneous and metamorphic rock beneath the sedimentary cover, typically granite, granodiorite, gneiss or schist, dominated by quartz, feldspar and mica with variable amphibole and other mafic minerals.",
+      "porosity": [0.1, 5.0],
+      "formation_env": "Continental crust formed and deformed long before the overlying basin fill was deposited; on the Norwegian Continental Shelf commonly Caledonian or older granitic and metamorphic rock at the base of the sedimentary section.",
+      "geophysical_signature": "Dense, fast and highly resistive where fresh, with a sharp step up in density, velocity and resistivity at the top-basement unconformity. Weathered or fractured basement can hold porosity and fluids, lowering resistivity and locally forming a reservoir."
+    }
+  ]
+}
