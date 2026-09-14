@@ -3,10 +3,11 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
-from app.agent.tools import ( market_tools, 
+from app.agent.tools import ( market_tools,
                              ooip_tool,
-                             porosity_tool, 
-                             rag_tools )
+                             porosity_tool,
+                             rag_tools,
+                             rock_properties_tool )
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,10 @@ async def _run_ooip(state, tool_input: dict) -> str:
 
 async def _run_market(state, tool_input: dict) -> str:
     return market_tools.run(tool_input)
+
+
+async def _run_rock_properties(state, tool_input: dict) -> str:
+    return rock_properties_tool.run(tool_input)
 
 
 async def _run_geology_search(state, tool_input: dict) -> str:
@@ -89,6 +94,7 @@ TOOLS: tuple[Tool, ...] = ( # the tools Agent[Claude] decides to run
     Tool(porosity_tool.TOOL_SCHEMA, _run_porosity, porosity_tool.MEASURES),
     Tool(ooip_tool.TOOL_SCHEMA, _run_ooip, ooip_tool.MEASURES),
     Tool(market_tools.TOOL_SCHEMA, _run_market, market_tools.MEASURES),
+    Tool(rock_properties_tool.TOOL_SCHEMA, _run_rock_properties, rock_properties_tool.MEASURES),
     Tool(rag_tools.GEOLOGY_SEARCH_TOOL_SPEC, _run_geology_search),
 )
 
