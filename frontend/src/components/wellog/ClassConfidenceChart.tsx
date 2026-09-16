@@ -22,18 +22,18 @@ export const ClassConfidenceChart: React.FC<ClassConfidenceChartProps> = ({ shar
       <p className="text-[#6b5a2e] text-xs m-0 mb-2 font-mono font-bold uppercase tracking-wider">
         CONFIDENCE BY CLASS
       </p>
-      <div className="h-[130px]">
+      <div className="h-[210px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -22 }}>
+          <BarChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: -18 }}>
             <XAxis
               dataKey="name"
-              tick={{ fill: '#a3893f', fontSize: 9, fontFamily: 'Fira Code, monospace' }}
+              tick={{ fill: '#a3893f', fontSize: 11, fontFamily: 'Fira Code, monospace' }}
               axisLine={{ stroke: '#4a3813' }}
               tickLine={false}
             />
             <YAxis
               domain={[0, 100]}
-              tick={{ fill: '#6b5a2e', fontSize: 9, fontFamily: 'Fira Code, monospace' }}
+              tick={{ fill: '#6b5a2e', fontSize: 11, fontFamily: 'Fira Code, monospace' }}
               axisLine={{ stroke: '#4a3813' }}
               tickLine={false}
             />

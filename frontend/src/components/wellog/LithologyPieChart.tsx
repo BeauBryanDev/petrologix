@@ -23,7 +23,7 @@ export const LithologyPieChart: React.FC<LithologyPieChartProps> = ({ shares }) 
       <p className="text-[#6b5a2e] text-xs m-0 mb-2 font-mono font-bold uppercase tracking-wider">
         LITHOLOGY DISTRIBUTION
       </p>
-      <div className="h-[150px]">
+      <div className="h-[210px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -32,8 +32,8 @@ export const LithologyPieChart: React.FC<LithologyPieChartProps> = ({ shares }) 
               nameKey="name"
               cx="50%"
               cy="50%"
-              innerRadius={28}
-              outerRadius={58}
+              innerRadius={42}
+              outerRadius={88}
               paddingAngle={2}
               stroke="#1c1409"
               strokeWidth={2}
@@ -57,11 +57,11 @@ export const LithologyPieChart: React.FC<LithologyPieChartProps> = ({ shares }) 
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="grid grid-cols-1 gap-y-1 mt-1 text-[0.68rem] font-mono text-[#a3893f]">
+      <div className="grid grid-cols-1 gap-y-1 mt-2 text-[0.75rem] font-mono text-[#a3893f]">
         {data.map((d, i) => (
           <div key={d.name} className="flex items-center gap-1.5 truncate">
             <span
-              className="w-2 h-2 rounded-sm shrink-0"
+              className="w-2.5 h-2.5 rounded-sm shrink-0"
               style={{ background: colourFor(i) }}
             />
             <span className="uppercase truncate">{d.name}</span>

@@ -38,32 +38,32 @@ export const OilPriceTicker: React.FC = () => {
 
   return (
     <div
-      className="hidden xl:flex items-center gap-3 text-xs font-mono bg-[#241a0a] border border-[#4a3813] px-3.5 py-1.5 rounded"
+      className="hidden xl:flex items-center gap-4 text-sm font-mono bg-[#241a0a] border border-[#4a3813] px-4 py-2.5 rounded"
       title={
         prices
           ? `EIA spot prices, quoted ${prices.wti_date}. Fetched ${new Date(prices.fetched_at).toLocaleString()}.`
           : 'EIA spot prices'
       }
     >
-      <TrendingUp className="w-4 h-4 text-[#efb027]" />
+      <TrendingUp className="w-6 h-6 text-[#efb027]" />
 
-      <div className="flex items-center gap-1.5 text-[#a3893f]">
+      <div className="flex items-center gap-2 text-[#a3893f]">
         <span className="text-[#6b5a2e]">WTI:</span>
-        <span className="text-[#efb027] font-bold">
+        <span className="text-[#efb027] font-bold text-lg tracking-tight">
           {prices ? `$${prices.wti_usd.toFixed(2)}` : unavailable ? '---' : '...'}
         </span>
       </div>
 
       <span className="text-[#4a3813]">|</span>
 
-      <div className="flex items-center gap-1.5 text-[#a3893f]">
+      <div className="flex items-center gap-2 text-[#a3893f]">
         <span className="text-[#6b5a2e]">BRENT:</span>
-        <span className="text-[#efb027] font-bold">
+        <span className="text-[#efb027] font-bold text-lg tracking-tight">
           {prices ? `$${prices.brent_usd.toFixed(2)}` : unavailable ? '---' : '...'}
         </span>
       </div>
 
-      <span className="text-[0.6rem] text-[#6b5a2e] uppercase tracking-wider border-l border-[#4a3813] pl-2">
+      <span className="text-[0.7rem] text-[#6b5a2e] uppercase tracking-wider border-l border-[#4a3813] pl-2.5">
         {unavailable ? 'EIA OFFLINE' : prices ? prices.wti_date : 'EIA'}
       </span>
     </div>

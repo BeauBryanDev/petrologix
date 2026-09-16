@@ -16,14 +16,16 @@ interface TrackDef {
   label: string;
 }
 
-const SVG_W = 340;
-const SVG_H = 320;
+// Aspect matters: the SVG scales to fit, so a viewBox narrower than the panel
+// letterboxes and wastes the width. Keep SVG_W near the panel's own ratio.
+const SVG_W = 520;
+const SVG_H = 400;
 const TOP_PAD = 15;
 const BOTTOM_PAD = 25;
 const PLOT_H = SVG_H - TOP_PAD - BOTTOM_PAD;
-const LEFT_EDGE = 28;
-const RIGHT_EDGE = 335;
-const TRACK_GAP = 3;
+const LEFT_EDGE = 34;
+const RIGHT_EDGE = 515;
+const TRACK_GAP = 5;
 
 // Scale ranges come from the training-set percentiles (p01-p99) so real North Sea
 // curves fill the track instead of hugging one edge.
@@ -95,7 +97,7 @@ export const WellLogChart: React.FC<WellLogChartProps> = ({ curves, wellName }) 
 
       <svg
         viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-        className="w-full h-[320px] overflow-visible cursor-crosshair"
+        className="w-full h-[400px] overflow-visible cursor-crosshair"
         onMouseLeave={() => setHoverIndex(null)}
         onMouseMove={(e) => {
           if (!points.length) return;
@@ -124,7 +126,7 @@ export const WellLogChart: React.FC<WellLogChartProps> = ({ curves, wellName }) 
           return (
             <g key={`grid-${i}`}>
               <line x1={LEFT_EDGE - 8} y1={y} x2={RIGHT_EDGE} y2={y} stroke="#4a3813" strokeWidth="0.8" opacity="0.6" />
-              <text x="1" y={y + 3} fontSize="8" fill="#a3893f" fontFamily="Fira Code, monospace" fontWeight="bold">
+              <text x="1" y={y + 3.5} fontSize="9" fill="#a3893f" fontFamily="Fira Code, monospace" fontWeight="bold">
                 {d.toFixed(0)}
               </text>
             </g>
@@ -134,7 +136,7 @@ export const WellLogChart: React.FC<WellLogChartProps> = ({ curves, wellName }) 
         {tracks.map((t, i) => {
           const { left, right } = bounds(i);
           return segments(t, left, right).map((pts, j) => (
-            <polyline key={`${t.key}-${j}`} points={pts} fill="none" stroke={t.colour} strokeWidth="1.5" />
+            <polyline key={`${t.key}-${j}`} points={pts} fill="none" stroke={t.colour} strokeWidth="2.2" />
           ));
         })}
 
@@ -145,7 +147,7 @@ export const WellLogChart: React.FC<WellLogChartProps> = ({ curves, wellName }) 
               const v = hover[t.key];
               if (v === null || v === undefined) return null;
               const { left, right } = bounds(i);
-              return <circle key={`hv-${t.key}`} cx={getX(v, t, left, right)} cy={getY(hover.depth)} r="2.6" fill={t.colour} />;
+              return <circle key={`hv-${t.key}`} cx={getX(v, t, left, right)} cy={getY(hover.depth)} r="3.2" fill={t.colour} />;
             })}
           </g>
         )}
@@ -154,12 +156,12 @@ export const WellLogChart: React.FC<WellLogChartProps> = ({ curves, wellName }) 
           const { left } = bounds(i);
           return (
             <g key={`legend-${t.key}`}>
-              <rect x={left} y={SVG_H - 16} width={trackWidth} height="14" fill="#2e2308" rx="2" />
+              <rect x={left} y={SVG_H - 18} width={trackWidth} height="16" fill="#2e2308" rx="2" />
               <text
                 x={left + trackWidth / 2}
-                y={SVG_H - 6}
+                y={SVG_H - 6.5}
                 textAnchor="middle"
-                fontSize="7.5"
+                fontSize="9.5"
                 fill={t.colour}
                 fontWeight="bold"
                 fontFamily="Fira Code, monospace"

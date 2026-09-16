@@ -21,7 +21,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, busy }) => {
         <BubbleMessage key={msg.id} message={msg} />
       ))}
 
-      {busy && (
+      {/* The streaming bubble carries its own status; this indicator covers
+          the gap before the backend sends the first byte. */}
+      {busy && !messages[messages.length - 1]?.streaming && (
         <div className="items-start">
           <div className="bg-[#241a0a] border border-[#efb027] rounded-md px-4 py-3 max-w-[80%] flex items-center gap-3 cyber-glow-amber">
             <GeoAvatar spinning />

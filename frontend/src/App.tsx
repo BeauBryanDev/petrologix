@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { HeaderBar } from './components/shell/HeaderBar';
 import { FooterBar } from './components/shell/FooterBar';
+import { DesktopOnlyNotice } from './components/shell/DesktopOnlyNotice';
 import { WellLogInputPanel } from './components/upload/WellLogInputPanel';
 import { GeologistAssistantPanel } from './components/chat/GeologistAssistantPanel';
 import { WellLogPlotPanel } from './components/wellog/WellLogPlotPanel';
@@ -19,12 +20,18 @@ export function App() {
       <div className="pointer-events-none absolute inset-0 z-50 cyber-scanline opacity-30" />
 
       {/* Top Header Bar */}
-      <HeaderBar />
+      <div className="hidden xl:block shrink-0">
+        <HeaderBar />
+      </div>
+
+      {/* Below 1280px the console is withheld -- see DesktopOnlyNotice. */}
+      <DesktopOnlyNotice />
 
       {/* Main Full-Viewport 3-Column Cyberpunk HUD Console */}
-      <main className="flex-1 grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)_460px] overflow-hidden gap-[2px] bg-[#4a3813] relative z-10">
+      {/* 20 / 50 / 30. Wider flanks are worth the narrower chat column. */}
+      <main className="hidden xl:grid flex-1 grid-cols-[minmax(0,1fr)_minmax(0,2.5fr)_minmax(0,1.5fr)] overflow-hidden gap-[2px] bg-[#4a3813] relative z-10">
         {/* Section 01: Well Log Input */}
-        <section className="bg-[#1c1409] h-full overflow-y-auto">
+        <section className="bg-[#1c1409] h-full min-h-0 overflow-hidden">
           <WellLogInputPanel />
         </section>
 
@@ -40,7 +47,9 @@ export function App() {
       </main>
 
       {/* Bottom Telemetry Footer */}
-      <FooterBar />
+      <div className="hidden xl:block shrink-0">
+        <FooterBar />
+      </div>
     </div>
   );
 }

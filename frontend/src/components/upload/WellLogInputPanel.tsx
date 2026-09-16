@@ -24,7 +24,7 @@ export const WellLogInputPanel: React.FC = () => {
   const busy = xgboostStatus === 'computing';
 
   return (
-    <div className="relative bg-[#1c1409] p-4 flex flex-col gap-4 h-full select-none border-r-2 border-[#4a3813]">
+    <div className="relative bg-[#1c1409] p-4 flex flex-col gap-4 h-full min-h-0 overflow-hidden select-none border-r-2 border-[#4a3813]">
       <CornerReticles />
 
       <PanelHeader
@@ -52,7 +52,9 @@ export const WellLogInputPanel: React.FC = () => {
 
       <WellLogDropZone onFile={uploadFile} />
       <FormatToggle value={format} onChange={setFormat} />
-      <DetectedCurves report={prediction?.curves} />
+      <div className="flex-1 min-h-0">
+        <DetectedCurves report={prediction?.curves} />
+      </div>
 
       <GeoEmblem />
 

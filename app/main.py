@@ -16,12 +16,9 @@ from app.routers import petroleum_price
 
 
 logger = logging.getLogger(__name__)
-"""  
-Main FastAPI app.
 
-The lifespan context manager loads the model at startup, so a missing or
- uvicorn app.main:app --reload --port 8006 will fail to start the first user.
-"""
+# The lifespan context manager loads the model at startup, so a missing or
+#  uvicorn app.main:app --reload --port 8006 will fail to start the first user.
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -62,7 +59,9 @@ async def lifespan(app: FastAPI):
                 info = await vectorstore.check_collection()
                 logger.info(
                     "geology RAG ready: %s (%s points, %s-dim)",
-                    info["collection"], info["points"], info["vector_size"],
+                    info["collection"], 
+                    info["points"], 
+                    info["vector_size"],
                 )
 
             except Exception as e:  # noqa: BLE001 - never block startup on this
@@ -79,6 +78,7 @@ async def lifespan(app: FastAPI):
 
     await vectorstore.aclose()
 
+# Main FastAPI app.
 
 app = FastAPI(
     title=settings.app_name,
@@ -95,6 +95,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Endpoint groups
 app.include_router(health.router)
 app.include_router(prediction.router)
 app.include_router(chat.router)

@@ -33,7 +33,7 @@ export const BubbleMessage: React.FC<BubbleMessageProps> = ({ message }) => {
             <div className="flex items-center gap-2">
               <GeoAvatar />
               <span className="text-[#efb027] text-sm font-bold tracking-widest font-mono uppercase">
-                {message.authorName || 'AEGIS-GEO-MIND'}
+                {message.authorName || 'PETROLOGIX'}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -49,7 +49,13 @@ export const BubbleMessage: React.FC<BubbleMessageProps> = ({ message }) => {
           {/* Claude answers in markdown, so **text** has to render as bold
               rather than reach the user as asterisks. MarkdownText keeps the
               pre-wrap the MEASURED block needs for its column alignment. */}
-          <MarkdownText text={message.text} />
+          {message.streaming && !message.text ? (
+            <span className="text-[#efb027] text-xs font-mono font-bold tracking-wider animate-pulse">
+              {message.status ?? 'PROCESSING SUBSURFACE TENSOR INFERENCE...'}
+            </span>
+          ) : (
+            <MarkdownText text={message.text} />
+          )}
         </div>
       )}
     </div>
