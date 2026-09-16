@@ -6,6 +6,16 @@ export interface ChatMessage {
   timestamp: string;
   faciesContext?: string;
   confidenceContext?: number;
+  // True while the backend is still streaming this answer.
+  streaming?: boolean;
+  // Short status line shown in place of text, e.g. which tool is running.
+  status?: string;
+}
+
+export interface ChatStreamHandlers {
+  onDelta: (text: string) => void;
+  onTool: (name: string) => void;
+  onDone: (response: ChatApiResponse) => void;
 }
 
 export interface ChatApiResponse {

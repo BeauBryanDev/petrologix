@@ -5,7 +5,7 @@ import {
   getModelInfo,
   listSampleWells,
   predictFromFile,
-  sendChat,
+  streamChat,
 } from '../services/api';
 import { ChatMessage } from '../types/chat';
 import { ModelInfo, PredictionResponse } from '../types/prediction';
@@ -45,7 +45,7 @@ function assistantMessage(text: string, prediction: PredictionResponse | null): 
   return {
     id: newId('msg-assistant'),
     sender: 'assistant',
-    authorName: 'AEGIS-GEO-MIND',
+    authorName: 'PETROLOGIX',
     text,
     timestamp: now(),
     faciesContext: top?.lithology,
@@ -131,30 +131,48 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       .messages.slice(-6)
       .map((m) => ({ role: m.sender === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }));
 
-    set((state) => ({ messages: [...state.messages, userMsg], llmStatus: 'busy' }));
+    // The assistant bubble exists from the start and fills in as text streams.
+    const replyId = newId('msg-assistant');
+    const reply: ChatMessage = {
+      id: replyId,
+      sender: 'assistant',
+      authorName: 'PETROLOGIX',
+      text: '',
+      timestamp: now(),
+      streaming: true,
+    };
+    const patchReply = (patch: Partial<ChatMessage> | ((m: ChatMessage) => Partial<ChatMessage>)) =>
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m.id === replyId ? { ...m, ...(typeof patch === 'function' ? patch(m) : patch) } : m,
+        ),
+      }));
+
+    set((state) => ({ messages: [...state.messages, userMsg, reply], llmStatus: 'busy' }));
 
     try {
-      const res = await sendChat(trimmed, get().sessionId, history);
-      set((state) => ({
-        llmStatus: res.llm_used ? 'online' : 'offline',
-        messages: [
-          ...state.messages,
-          {
-            id: newId('msg-assistant'),
-            sender: 'assistant',
-            authorName: 'AEGIS-GEO-MIND',
+      await streamChat(trimmed, get().sessionId, history, {
+        onDelta: (text) => patchReply((m) => ({ text: m.text + text, status: undefined })),
+        // Text before a tool call was preamble; the answer proper starts after.
+        onTool: (name) => patchReply({ text: '', status: `RUNNING ${name.toUpperCase()}...` }),
+        onDone: (res) => {
+          patchReply({
             text: res.answer,
-            timestamp: now(),
+            streaming: false,
+            status: undefined,
             faciesContext: res.dominant_lithology ?? undefined,
             confidenceContext: res.mean_confidence ?? undefined,
-          },
-        ],
-      }));
+          });
+          set({ llmStatus: res.llm_used ? 'online' : 'offline' });
+        },
+      });
     } catch (err) {
-      set((state) => ({
-        llmStatus: 'offline',
-        messages: [...state.messages, assistantMessage(apiErrorMessage(err), get().prediction)],
-      }));
+      patchReply({ text: apiErrorMessage(err), streaming: false, status: undefined });
+      set({ llmStatus: 'offline' });
+    } finally {
+      // A stream that ended without a done event must not leave the input locked.
+      if (get().llmStatus === 'busy') set({ llmStatus: 'online' });
+      patchReply({ streaming: false });
     }
   },
 
@@ -163,8 +181,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 }));
 
 function summarize(p: PredictionResponse): string {
+
   if (p.distribution.status === 'out_of_distribution') return p.distribution.message;
   const top = p.distribution_by_lithology[0];
+
   if (!top) return `Loaded ${p.well_name}. No lithology zones resolved.`;
+  
   return `Loaded ${p.well_name}: ${p.n_samples} depth samples, ${p.intervals.length} zones. Dominant lithology ${top.lithology} (${(top.fraction * 100).toFixed(0)}%, mean confidence ${top.mean_confidence.toFixed(2)}).`;
 }
